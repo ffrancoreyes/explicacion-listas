@@ -1,0 +1,2436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listas en C++</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f1f5f9;
+            color: #111827;
+            font-family: Consolas, 'JetBrains Mono', monospace;
+        }
+
+        /* Caja del nodo idéntica al dibujo del apunte 08 y 09 */
+        .nodo-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 168px;
+            height: 72px;
+            border: 3px solid #000000;
+            background-color: #ffffff;
+            position: relative;
+            box-shadow: 3px 3px 0px #000000;
+        }
+
+        /* Caja ligeramente más compacta para que las diapositivas entren sin barra de scroll */
+        .nodo-box-pres {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 148px;
+            height: 68px;
+            border: 3px solid #000000;
+            background-color: #ffffff;
+            position: relative;
+            box-shadow: 3px 3px 0px #000000;
+        }
+
+        /* Nodo especial para doblemente enlazadas o sublistas en modo presentación */
+        .nodo-box-doble {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 164px;
+            height: 78px;
+            border: 3px solid #000000;
+            background-color: #ffffff;
+            position: relative;
+            box-shadow: 3px 3px 0px #000000;
+        }
+
+        .nodo-info {
+            border-right: 3px solid #000000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .nodo-sgte {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #000000;
+            position: relative;
+        }
+
+        /* Animación suave al insertar un nuevo nodo en la lista */
+        @keyframes fadePopIn {
+            from {
+                opacity: 0;
+                transform: translateY(-12px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .animate-nodo {
+            animation: fadePopIn 0.25s ease-out forwards;
+        }
+
+        .neo-shadow {
+            box-shadow: 4px 4px 0px #000000;
+        }
+
+        .neo-shadow-sm {
+            box-shadow: 2px 2px 0px #000000;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- CABECERA MEJORADA -->
+    <header id="mainHeader" class="bg-white border-b-[3px] border-black sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            
+            <!-- Marca y Título -->
+            <div class="flex items-center gap-3.5">
+                <div class="w-11 h-11 bg-black text-white flex flex-col items-center justify-center font-extrabold text-xs leading-none border-2 border-black neo-shadow-sm shrink-0">
+                    <span class="text-[10px] text-emerald-400 mt-0.5">C++</span>
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-extrabold text-black tracking-tight">
+                            Listas (Lists)
+                        </h1>
+                    </div>
+                    <p class="text-xs text-neutral-600 mt-0.5">
+                        Operaciones <span class="text-green-700 font-bold">insertar</span>, <span class="text-red-700 font-bold">quitar</span> y <span class="text-violet-700 font-bold">buscar</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Pestañas Centrales: Pizarra Interactiva vs. Explicar Listas (Presentación) -->
+            <div class="flex flex-wrap items-center gap-2 bg-neutral-100 p-1.5 border-2 border-black self-start lg:self-auto">
+                <button id="tabPizarraBtn" onclick="switchView('pizarra')" class="px-3.5 py-1.5 text-xs sm:text-sm font-extrabold border-2 border-black bg-black text-white cursor-pointer transition">
+                    1. Pizarra Interactiva
+                </button>
+                <button id="tabExplicarBtn" onclick="switchView('explicar')" class="px-3.5 py-1.5 text-xs sm:text-sm font-extrabold border-2 border-transparent text-black hover:bg-white cursor-pointer transition flex items-center gap-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full bg-green-600"></span>
+                    2. Explicar Listas (Paso a Paso)
+                </button>
+            </div>
+
+            <!-- Botones de Acción Rápida -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button id="btnMaximizePizarra" onclick="toggleMaximizePizarra()" class="px-3 py-1.5 bg-amber-300 hover:bg-amber-400 text-black text-xs font-extrabold border-2 border-black neo-shadow-sm cursor-pointer transition flex items-center gap-1.5" title="Ocultar todo y dejar solo las pizarras para operar">
+                    <span>⛶</span> Maximizar Pizarra
+                </button>
+                <button id="btnAddList" onclick="addNewList()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold border-2 border-black neo-shadow-sm cursor-pointer transition">
+                    + Nueva Lista
+                </button>
+                <button id="toggleMainBtn" onclick="toggleMainPanel()" class="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold border-2 border-black neo-shadow-sm cursor-pointer transition">
+                    Mostrar main()
+                </button>
+                <button onclick="toggleApunteModal()" class="px-3 py-1.5 bg-white hover:bg-neutral-100 text-black text-xs font-bold border-2 border-black neo-shadow-sm cursor-pointer transition">
+                    Apunte C++
+                </button>
+                <button onclick="resetAll()" class="px-3 py-1.5 bg-white hover:bg-red-50 text-red-700 text-xs font-bold border-2 border-black neo-shadow-sm cursor-pointer transition">
+                    Reiniciar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main id="mainContainer" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6 transition-all">
+
+        <!-- =================================================================== -->
+        <!-- VISTA 1: PIZARRA INTERACTIVA DE PRÁCTICA                            -->
+        <!-- =================================================================== -->
+        <div id="viewPizarra" class="flex flex-col gap-6">
+
+            <!-- BARRA SUPERIOR: CAJA "retorno" + CAJA "Nodo *buscado" + CONTROLES EN MODO MAXIMIZADO -->
+            <section class="bg-white border-2 border-black neo-shadow p-4 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+                
+                <div class="flex flex-wrap items-center gap-5">
+                    <!-- 1. Dibujo: retorno ───► [ info ] -->
+                    <div class="flex items-center">
+                        <div class="flex flex-col items-center mr-1.5">
+                            <span class="text-xs font-bold text-black leading-none mb-1">retorno (dato extraído)</span>
+                            <svg width="78" height="18" viewBox="0 0 78 18" class="overflow-visible">
+                                <line x1="0" y1="9" x2="70" y2="9" stroke="#15803d" stroke-width="3" />
+                                <polyline points="60,3 72,9 60,15" fill="none" stroke="#15803d" stroke-width="3" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <!-- Caja verde [ info ] -->
+                        <div id="retornoBox" class="w-28 h-14 border-[3px] border-green-700 bg-white flex flex-col items-center justify-center relative">
+                            <span class="text-[10px] text-neutral-500 font-bold leading-none">int retorno</span>
+                            <span id="retornoValue" class="text-xl font-bold text-black leading-tight">vacío</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Dibujo: Nodo *buscado ───► [ xxx2 ] (Devolver puntero a un nodo) -->
+                    <div class="flex items-center pl-0 sm:pl-3 sm:border-l-2 border-neutral-300">
+                        <div class="flex flex-col items-center mr-1.5">
+                            <span class="text-xs font-bold text-violet-900 leading-none mb-1">puntero devuelto</span>
+                            <svg width="78" height="18" viewBox="0 0 78 18" class="overflow-visible">
+                                <line x1="0" y1="9" x2="70" y2="9" stroke="#6d28d9" stroke-width="3" />
+                                <polyline points="60,3 72,9 60,15" fill="none" stroke="#6d28d9" stroke-width="3" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <div id="ptrBuscadoBox" class="w-36 h-14 border-[3px] border-violet-700 bg-white flex flex-col items-center justify-center relative px-2">
+                            <span class="text-[10px] text-neutral-500 font-bold leading-none">Nodo *buscado</span>
+                            <span id="ptrBuscadoValue" class="text-sm font-extrabold text-neutral-400 leading-tight mt-0.5">NULL</span>
+                        </div>
+                    </div>
+
+                    <!-- Botones para mandar el dato extraído a otra lista -->
+                    <div class="flex flex-col gap-1">
+                        <span class="text-xs font-bold text-neutral-700">Enviar <code class="text-green-800">retorno</code> a una lista:</span>
+                        <div id="sendRetornoButtons" class="flex flex-wrap items-center gap-1.5">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explicación estilo apunte de lo que acaba de pasar (se oculta al maximizar) -->
+                <div id="stepExplanation" class="text-xs sm:text-sm bg-neutral-50 border-2 border-neutral-300 px-3.5 py-2.5 text-neutral-800 w-full xl:w-auto xl:max-w-md">
+                    <strong>Libertad total en Listas:</strong> Podés insertar o quitar al <strong>inicio</strong>, al <strong>final</strong>, <strong>ordenado</strong> o en una <strong>posición</strong>, y también <strong>devolver el puntero a un nodo</strong> con <code class="font-bold">buscar()</code>.
+                </div>
+
+                <!-- Controles rápidos visibles únicamente cuando la pizarra está maximizada -->
+                <div id="maximizedToolbar" class="hidden flex-wrap items-center gap-2 w-full xl:w-auto justify-end border-t-2 xl:border-t-0 pt-3 xl:pt-0 border-black">
+                    <button onclick="addNewList()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold border-2 border-black neo-shadow-sm cursor-pointer transition">
+                        + Nueva Lista
+                    </button>
+                    <button onclick="resetAll()" class="px-3 py-1.5 bg-white hover:bg-red-50 text-red-700 text-xs font-bold border-2 border-black neo-shadow-sm cursor-pointer transition">
+                        Reiniciar
+                    </button>
+                    <button onclick="toggleMaximizePizarra()" class="px-3.5 py-1.5 bg-amber-300 hover:bg-amber-400 text-black text-xs font-extrabold border-2 border-black neo-shadow-sm cursor-pointer transition flex items-center gap-1.5">
+                        <span>✕</span> Salir de Modo Maximizado
+                    </button>
+                </div>
+            </section>
+
+            <!-- PIZARRA CENTRAL: LISTAS OCUPAN TODO EL ANCHO DE ENTRADA + MAIN() OCULTO POR DEFECTO -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                <!-- ZONA DE LISTAS DIBUJADAS HORIZONTALMENTE (12 COLUMNAS CUANDO MAIN ESTÁ OCULTO) -->
+                <section id="listsContainer" class="lg:col-span-12 flex flex-col gap-6">
+                    <!-- Se dibuja cada lista horizontal aquí -->
+                </section>
+
+                <!-- CÓDIGO MAIN() LIMPIO (OCULTO DE ENTRADA) -->
+                <aside id="mainCodeSidebar" class="hidden lg:col-span-4 bg-white border-2 border-black neo-shadow p-4 sticky top-24">
+                    <div class="flex items-center justify-between pb-2.5 mb-3 border-b-2 border-black">
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-sm">Código C++ (main)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="copyCode()" id="copyBtn" class="px-2.5 py-1 bg-black text-white text-xs font-bold cursor-pointer hover:bg-neutral-800">
+                                Copiar C++
+                            </button>
+                            <button onclick="clearCodeHistory()" class="px-2 py-1 bg-neutral-100 hover:bg-neutral-200 text-black text-xs border border-black cursor-pointer" title="Limpiar líneas">
+                                Limpiar
+                            </button>
+                            <button onclick="toggleMainPanel()" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-black text-xs font-bold border border-black cursor-pointer" title="Ocultar panel main()">
+                                Ocultar ✕
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="codeBox" class="text-xs sm:text-sm leading-relaxed overflow-y-auto max-h-[460px] whitespace-pre font-mono bg-neutral-50 p-3.5 border border-neutral-300"></div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- VISTA 2: APARTADO "EXPLICAR LISTAS" (PRESENTACIÓN PASO A PASO)      -->
+        <!-- =================================================================== -->
+        <section id="viewExplicar" class="hidden flex-col gap-6">
+            
+            <!-- Selector de algoritmo y caso a proyectar -->
+            <div class="bg-white border-2 border-black neo-shadow p-4 flex flex-col gap-3">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+                    <div>
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 border border-black">Listas - Tipos</span>
+                        <h2 class="text-lg sm:text-xl font-extrabold text-black mt-1">
+                            Paso a Paso: Operaciones sobre Listas, Búsqueda de Punteros y Tipos de Listas
+                        </h2>
+                    </div>
+                </div>
+
+                <!-- Botones de elección de presentación -->
+                <div class="flex flex-wrap gap-2 pt-1">
+                    <button id="presBtn_ins_inicio" onclick="selectPresentation('ins_inicio')" class="px-3 py-1.5 text-xs font-extrabold border-2 border-black cursor-pointer transition">
+                        A) Insertar Primero
+                    </button>
+                    <button id="presBtn_ins_final" onclick="selectPresentation('ins_final')" class="px-3 py-1.5 text-xs font-extrabold border-2 border-black cursor-pointer transition">
+                        B) Insertar al Final
+                    </button>
+                    <button id="presBtn_ins_medio" onclick="selectPresentation('ins_medio')" class="px-3 py-1.5 text-xs font-extrabold border-2 border-black cursor-pointer transition">
+                        C) Insertar Ordenado / Posición
+                    </button>
+                    <button id="presBtn_qui_inicio" onclick="selectPresentation('qui_inicio')" class="px-3 py-1.5 text-xs font-extrabold border-2 border-black cursor-pointer transition">
+                        D) Quitar Primero
+                    </button>
+                    <button id="presBtn_qui_final" onclick="selectPresentation('qui_final')" class="px-3 py-1.5 text-xs font-extrabold border-2 border-black cursor-pointer transition">
+                        E) Quitar al Final
+                    </button>
+                    <button id="presBtn_qui_medio" onclick="selectPresentation('qui_medio')" class="px-3 py-1.5 text-xs font-extrabold border-2 border-black cursor-pointer transition">
+                        F) Quitar en Posición / Medio
+                    </button>
+                    <button id="presBtn_buscar_ptr" onclick="selectPresentation('buscar_ptr')" class="px-3 py-1.5 text-xs font-extrabold border-2 border-black cursor-pointer transition">
+                        G) Devolver Puntero (buscar)
+                    </button>
+                    <button id="presBtn_tipos_listas" onclick="selectPresentation('tipos_listas')" class="px-3 py-1.5 text-xs font-extrabold border-2 border-black cursor-pointer transition">
+                        H) Los 5 Tipos de Listas y Operaciones
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cuerpo de la diapositiva: Pizarra grande a la izquierda + Explicación y Código a la derecha -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                
+                <!-- Lienzo visual del paso actual (7 columnas) -->
+                <div class="lg:col-span-7 bg-white border-2 border-black neo-shadow p-4 sm:p-5 flex flex-col justify-between min-h-[480px]">
+                    <div class="flex flex-wrap items-center justify-between border-b-2 border-black pb-3 mb-3 gap-2">
+                        <span id="presSlideBadge" class="px-2.5 py-1 bg-black text-white text-xs sm:text-sm font-extrabold">
+                            Paso 1
+                        </span>
+                        <span id="presSlideSubtitle" class="text-xs sm:text-sm font-bold text-neutral-600">
+                            Representación en memoria
+                        </span>
+                    </div>
+
+                    <!-- Dibujo dinámico grande (sin justify-center directo en el contenedor con scroll para que jamás corte el borde izquierdo) -->
+                    <div class="flex-1 flex items-center overflow-x-auto py-4">
+                        <div id="presDiagramCanvas" class="w-fit mx-auto px-3">
+                            <!-- Se inyecta el diagrama horizontal del paso -->
+                        </div>
+                    </div>
+
+                    <!-- Nota pedagógica de qué operaciones se permiten o qué cuidado tener -->
+                    <div id="presOperationBadge" class="mb-3 bg-indigo-50 border-2 border-black px-3 py-2 text-xs text-indigo-950 font-medium">
+                        <!-- Resumen didáctico de la operación -->
+                    </div>
+
+                    <!-- Controles de navegación tipo diapositiva -->
+                    <div class="pt-3 border-t-2 border-black flex flex-wrap items-center justify-between gap-3">
+                        <button id="presPrevBtn" onclick="prevSlide()" class="px-4 py-2 bg-white hover:bg-neutral-100 text-black font-extrabold text-xs sm:text-sm border-2 border-black neo-shadow-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                            ← Paso Anterior
+                        </button>
+
+                        <!-- Indicadores de puntos -->
+                        <div id="presStepDots" class="flex items-center gap-2"></div>
+
+                        <button id="presNextBtn" onclick="nextSlide()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs sm:text-sm border-2 border-black neo-shadow-sm cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                            Siguiente Paso →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Explicación teórica del apunte y línea C++ iluminada (5 columnas) -->
+                <div class="lg:col-span-5 bg-white border-2 border-black neo-shadow p-5 flex flex-col justify-between gap-4">
+                    <div>
+                        <div class="text-xs font-bold uppercase text-neutral-500 mb-1">Explicación Didáctica del Apunte</div>
+                        <h3 id="presStepTitle" class="text-base sm:text-lg font-extrabold text-black border-b-2 border-black pb-2 mb-3">
+                            Título del paso
+                        </h3>
+                        <div id="presStepText" class="text-xs sm:text-sm leading-relaxed text-neutral-800 bg-amber-50/70 border-2 border-black p-3.5 mb-4 space-y-1.5">
+                            Descripción paso a paso...
+                        </div>
+
+                        <div class="text-xs font-bold uppercase text-neutral-500 mb-1.5">Código C++ ejecutándose en este paso:</div>
+                        <div id="presCodeHighlight" class="bg-neutral-900 text-neutral-100 p-3 text-xs font-mono overflow-x-auto space-y-1 border-2 border-black">
+                            <!-- Código con línea resaltada -->
+                        </div>
+                    </div>
+
+                    <div class="bg-neutral-100 border border-neutral-400 p-3 text-xs text-neutral-700">
+                        <strong>Tip para clase:</strong> Podés usar las flechas del teclado (<kbd class="px-1.5 py-0.5 bg-white border border-black font-bold">←</kbd> y <kbd class="px-1.5 py-0.5 bg-white border border-black font-bold">→</kbd>) para avanzar o retroceder la explicación.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- APARTADO INDEPENDIENTE: REFERENCIAS DEL APUNTE EXPLICADAS           -->
+        <!-- =================================================================== -->
+        <section id="referenciasSection" class="bg-white border-2 border-black neo-shadow p-4 sm:p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b-2 border-black gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 bg-black text-white text-xs font-extrabold">GUÍA VISUAL</span>
+                    <h2 class="text-sm sm:text-base font-extrabold text-black">
+                        Listas Enlazadas
+                    </h2>
+                </div>
+                <span class="text-xs text-neutral-600">
+                    Significado de cada puntero, pasaje de parámetros y recorridos
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 text-xs">
+                <!-- Referencia 1: lista = xxx1 -->
+                <div class="border-2 border-black p-3 bg-indigo-50/50 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <span class="px-1.5 py-0.5 border-2 border-indigo-700 bg-white font-extrabold text-indigo-900 text-xs">↑ lista = xxx1</span>
+                        </div>
+                        <p class="text-neutral-800 leading-relaxed">
+                            <strong>Puntero Cabecera:</strong> apunta siempre al <strong>primer nodo</strong> de la lista. Nunca debemos usar <code class="font-bold">lista</code> directamente para recorrer porque perderíamos el inicio.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Referencia 2: aux (recorrido) -->
+                <div class="border-2 border-black p-3 bg-sky-50/50 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-1.5 py-0.5 border-2 border-sky-500 bg-white font-extrabold text-sky-700 text-xs">↑ aux</span>
+                        </div>
+                        <p class="text-neutral-800 leading-relaxed">
+                            <strong>Puntero para recorrer:</strong> hacemos <code class="font-bold">Nodo *aux = lista;</code> y avanzamos con <code class="font-bold">aux = aux-&gt;sgte;</code> dentro de un <code class="font-bold">while(aux != NULL)</code>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Referencia 3: ant y act -->
+                <div class="border-2 border-black p-3 bg-cyan-50/50 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-1.5 mb-2">
+                            <span class="px-1.5 py-0.5 border-2 border-sky-600 bg-white font-extrabold text-sky-800 text-xs">↑ ant &nbsp;|&nbsp; ↑ act</span>
+                        </div>
+                        <p class="text-neutral-800 leading-relaxed">
+                            <strong>Insertar o quitar en medio:</strong> <code class="font-bold">act</code> busca la posición y <code class="font-bold">ant</code> lo sigue un paso atrás (<code class="font-bold">ant = act; act = act-&gt;sgte;</code>) para poder puentear nodos.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Referencia 4: Pasaje por Valor vs Referencia -->
+                <div class="border-2 border-black p-3 bg-emerald-50/50 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-1.5 py-0.5 border-2 border-green-700 bg-white font-extrabold text-green-800 text-xs">Nodo * vs Nodo *&amp;</span>
+                        </div>
+                        <p class="text-neutral-800 leading-relaxed">
+                            <strong>Pasaje de parámetros:</strong> usamos <code class="font-bold">Nodo *lista</code> (valor) para mostrar/buscar y <code class="font-bold">Nodo *&amp;lista</code> (referencia) para insertar o eliminar.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Referencia 5: Regla de Parcial (Sí se recorren) -->
+                <div class="border-2 border-black p-3 bg-amber-50/60 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-1.5 py-0.5 border-2 border-amber-600 bg-white font-extrabold text-amber-900 text-xs">¡SÍ SE RECORREN!</span>
+                        </div>
+                        <p class="text-neutral-800 leading-relaxed">
+                            <strong>Libertad total:</strong> a diferencia de pilas y colas, las listas <strong>sí se recorren</strong> y podés crear la función a medida que pida el parcial (buscar, ordenar, filtrar).
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- FOOTER CON REDES SOCIALES (MISMO ESTILO VISUAL)                     -->
+    <!-- =================================================================== -->
+    <footer id="mainFooter" class="bg-white border-t-[3px] border-black mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            
+            <!-- Marca / Autor -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-black text-emerald-400 flex items-center justify-center font-extrabold text-xs border-2 border-black neo-shadow-sm">
+                    &lt;/&gt;
+                </div>
+                <div>
+                    <p class="text-xs sm:text-sm font-extrabold text-black leading-tight">
+                        Listas Enlazadas - (Lists)
+                    </p>
+                    <p class="text-[11px] text-neutral-600">
+                        creado por @ffrancoreyes
+                    </p>
+                </div>
+            </div>
+
+            <!-- Enlaces a Redes Sociales -->
+            <div class="flex flex-wrap items-center justify-center gap-2.5">
+                <!-- Instagram -->
+                <a href="https://instagram.com/ffrancoreyes" target="_blank" rel="noopener noreferrer" 
+                   class="px-3 py-1.5 bg-pink-100 hover:bg-pink-200 text-black text-xs font-extrabold border-2 border-black neo-shadow-sm transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                    </svg>
+                    <span>Instagram</span>
+                </a>
+
+                <!-- GitHub -->
+                <a href="https://github.com/ffrancoreyes" target="_blank" rel="noopener noreferrer" 
+                   class="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 text-black text-xs font-extrabold border-2 border-black neo-shadow-sm transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                    </svg>
+                    <span>GitHub</span>
+                </a>
+
+                <!-- LinkedIn -->
+                <a href="https://www.linkedin.com/in/fabrizziofrancoreyes/" target="_blank" rel="noopener noreferrer" 
+                   class="px-3 py-1.5 bg-sky-100 hover:bg-sky-200 text-black text-xs font-extrabold border-2 border-black neo-shadow-sm transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                        <rect x="2" y="9" width="4" height="12"></rect>
+                        <circle cx="4" cy="4" r="2"></circle>
+                    </svg>
+                    <span>LinkedIn</span>
+                </a>
+
+                <!-- YouTube -->
+                <a href="https://youtube.com/@ffrancoreyesUTN" target="_blank" rel="noopener noreferrer" 
+                   class="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-black text-xs font-extrabold border-2 border-black neo-shadow-sm transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+                    </svg>
+                    <span>YouTube</span>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL CON EL APUNTE DE LISTAS Y EL CÓDIGO C++ -->
+    <div id="apunteModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+        <div class="bg-white border-2 border-black max-w-4xl w-full p-5 max-h-[90vh] overflow-y-auto neo-shadow">
+            <div class="flex items-center justify-between pb-3 mb-4 border-b-2 border-black">
+                <h2 class="font-bold text-base sm:text-lg">Resumen de Funciones de Listas</h2>
+                <button onclick="toggleApunteModal()" class="px-2.5 py-1 bg-black text-white text-xs font-bold cursor-pointer">
+                    Cerrar ✕
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm mb-4">
+                <div class="border-2 border-black p-3 bg-neutral-50">
+                    <h3 class="font-bold text-green-800 mb-2 underline">Operaciones de Inserción y Búsqueda</h3>
+                    <ol class="list-decimal list-inside space-y-1.5">
+                        <li><strong>Insertar Primero:</strong> <code class="font-bold">nuevo-&gt;sgte = lista; lista = nuevo;</code></li>
+                        <li><strong>Insertar al Final:</strong> recorro con <code class="font-bold">while(aux-&gt;sgte != NULL)</code> y conecto <code class="font-bold">aux-&gt;sgte = nuevo;</code>.</li>
+                        <li><strong>Insertar Ordenado / en Posición:</strong> avanzo hasta el nodo anterior y conecto <code class="font-bold">nuevo-&gt;sgte = aux-&gt;sgte; aux-&gt;sgte = nuevo;</code>.</li>
+                        <li><strong>Devolver puntero (<code class="font-bold">buscar</code>):</strong> recorro por valor (<code class="font-bold">Nodo *lista</code>) y retorno <code class="font-bold">aux</code> (dirección del nodo) o <code class="font-bold">NULL</code>.</li>
+                    </ol>
+                </div>
+
+                <div class="border-2 border-black p-3 bg-neutral-50">
+                    <h3 class="font-bold text-red-700 mb-2 underline">Operaciones de Eliminación (Quitar)</h3>
+                    <ol class="list-decimal list-inside space-y-1.5">
+                        <li><strong>Quitar Primero:</strong> guardo <code class="font-bold">aux = lista;</code>, avanzo <code class="font-bold">lista = aux-&gt;sgte;</code> y libero <code class="font-bold">delete aux;</code>.</li>
+                        <li><strong>Quitar al Final:</strong> avanzo con <code class="font-bold">ant</code> y <code class="font-bold">aux</code> hasta el último nodo, pongo <code class="font-bold">ant-&gt;sgte = NULL;</code> y <code class="font-bold">delete aux;</code>.</li>
+                        <li><strong>Quitar en Posición / Medio:</strong> avanzo con <code class="font-bold">ant</code> y <code class="font-bold">aux</code> hasta <code class="font-bold">pos</code>, puenteo <code class="font-bold">ant-&gt;sgte = aux-&gt;sgte;</code> y libero <code class="font-bold">delete aux;</code>.</li>
+                    </ol>
+                </div>
+            </div>
+
+            <pre class="bg-neutral-900 text-neutral-100 p-3 text-xs overflow-x-auto leading-relaxed">struct Nodo{
+    int info;
+    Nodo *sgte;
+};
+
+void insertarInicio(Nodo *&amp;lista, int dato);
+void insertarFinal(Nodo *&amp;lista, int dato);
+void insertarOrdenado(Nodo *&amp;lista, int dato);
+void insertarEnPosicion(Nodo *&amp;lista, int dato, int pos);
+int quitarInicio(Nodo *&amp;lista);
+int quitarFinal(Nodo *&amp;lista);
+int quitarPosicion(Nodo *&amp;lista, int pos);
+Nodo* buscar(Nodo *lista, int dato);</pre>
+        </div>
+    </div>
+
+    <script>
+        let lists = [];
+        let retornoVal = null;
+        let ptrBuscadoInfo = null; // { addr, info, listLabel } o { notFound: true, searchedVal }
+        let usedRetornoVar = false;
+        let usedBuscadoVar = false;
+        let codeLines = [];
+        let addrCounter = 1;
+        let listCounter = 1;
+        let lastCreatedNodeId = null;
+
+        // Estado temporal para animar punteros (aux, ant, act) al quitar un nodo
+        let deletingState = null; // { listId, nodeId, idx, mode: 'inicio'|'final'|'medio' }
+
+        // Estado de interfaz: main() inicia oculto de entrada
+        let showMainCode = false;
+        let isPizarraMaximized = false;
+        let currentView = 'pizarra'; // 'pizarra' | 'explicar'
+        let currentPresKey = 'ins_inicio';
+        let currentSlideIdx = 0;
+
+        function toggleMaximizePizarra() {
+            if (currentView !== 'pizarra') {
+                switchView('pizarra');
+            }
+
+            isPizarraMaximized = !isPizarraMaximized;
+
+            const headerEl = document.getElementById('mainHeader');
+            const refSectionEl = document.getElementById('referenciasSection');
+            const footerEl = document.getElementById('mainFooter');
+            const stepExpEl = document.getElementById('stepExplanation');
+            const maxToolbarEl = document.getElementById('maximizedToolbar');
+            const mainContainerEl = document.getElementById('mainContainer');
+            const sidebarEl = document.getElementById('mainCodeSidebar');
+            const lContainerEl = document.getElementById('listsContainer');
+
+            if (isPizarraMaximized) {
+                headerEl.classList.add('hidden');
+                refSectionEl.classList.add('hidden');
+                footerEl.classList.add('hidden');
+                stepExpEl.classList.add('hidden');
+
+                maxToolbarEl.classList.remove('hidden');
+                maxToolbarEl.classList.add('flex');
+
+                sidebarEl.classList.add('hidden');
+                lContainerEl.className = 'lg:col-span-12 flex flex-col gap-6';
+                mainContainerEl.className = 'flex-1 max-w-full w-full mx-auto p-3 sm:p-5 flex flex-col gap-4 transition-all';
+            } else {
+                headerEl.classList.remove('hidden');
+                refSectionEl.classList.remove('hidden');
+                footerEl.classList.remove('hidden');
+                stepExpEl.classList.remove('hidden');
+
+                maxToolbarEl.classList.add('hidden');
+                maxToolbarEl.classList.remove('flex');
+
+                mainContainerEl.className = 'flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6 transition-all';
+
+                if (showMainCode) {
+                    sidebarEl.classList.remove('hidden');
+                    lContainerEl.className = 'lg:col-span-8 flex flex-col gap-6';
+                } else {
+                    sidebarEl.classList.add('hidden');
+                    lContainerEl.className = 'lg:col-span-12 flex flex-col gap-6';
+                }
+            }
+        }
+
+        function switchView(view) {
+            currentView = view;
+            const pizarraEl = document.getElementById('viewPizarra');
+            const explicarEl = document.getElementById('viewExplicar');
+            const tabPizarraBtn = document.getElementById('tabPizarraBtn');
+            const tabExplicarBtn = document.getElementById('tabExplicarBtn');
+            const btnAddList = document.getElementById('btnAddList');
+            const toggleMainBtn = document.getElementById('toggleMainBtn');
+            const btnMaximizePizarra = document.getElementById('btnMaximizePizarra');
+
+            if (view === 'pizarra') {
+                pizarraEl.classList.remove('hidden');
+                explicarEl.classList.add('hidden');
+                explicarEl.classList.remove('flex');
+
+                tabPizarraBtn.className = 'px-3.5 py-1.5 text-xs sm:text-sm font-extrabold border-2 border-black bg-black text-white cursor-pointer transition';
+                tabExplicarBtn.className = 'px-3.5 py-1.5 text-xs sm:text-sm font-extrabold border-2 border-transparent text-black hover:bg-white cursor-pointer transition flex items-center gap-1.5';
+
+                btnAddList.classList.remove('hidden');
+                toggleMainBtn.classList.remove('hidden');
+                btnMaximizePizarra.classList.remove('hidden');
+            } else {
+                pizarraEl.classList.add('hidden');
+                explicarEl.classList.remove('hidden');
+                explicarEl.classList.add('flex');
+
+                tabExplicarBtn.className = 'px-3.5 py-1.5 text-xs sm:text-sm font-extrabold border-2 border-black bg-black text-white cursor-pointer transition flex items-center gap-1.5';
+                tabPizarraBtn.className = 'px-3.5 py-1.5 text-xs sm:text-sm font-extrabold border-2 border-transparent text-black hover:bg-white cursor-pointer transition';
+
+                btnAddList.classList.add('hidden');
+                toggleMainBtn.classList.add('hidden');
+                btnMaximizePizarra.classList.add('hidden');
+                renderPresentation();
+            }
+        }
+
+        function toggleMainPanel() {
+            showMainCode = !showMainCode;
+            const sidebar = document.getElementById('mainCodeSidebar');
+            const lContainer = document.getElementById('listsContainer');
+            const btn = document.getElementById('toggleMainBtn');
+
+            if (showMainCode) {
+                sidebar.classList.remove('hidden');
+                lContainer.className = 'lg:col-span-8 flex flex-col gap-6';
+                btn.textContent = 'Ocultar main()';
+                btn.className = 'px-3 py-1.5 bg-amber-300 hover:bg-amber-400 text-black text-xs font-bold border-2 border-black neo-shadow-sm cursor-pointer transition';
+            } else {
+                sidebar.classList.add('hidden');
+                lContainer.className = 'lg:col-span-12 flex flex-col gap-6';
+                btn.textContent = 'Mostrar main()';
+                btn.className = 'px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-bold border-2 border-black neo-shadow-sm cursor-pointer transition';
+            }
+        }
+
+        function getNextAddress() {
+            return `xxx${addrCounter++}`;
+        }
+
+        function resetAll() {
+            addrCounter = 1;
+            listCounter = 3;
+            retornoVal = null;
+            ptrBuscadoInfo = null;
+            usedRetornoVar = false;
+            usedBuscadoVar = false;
+            lastCreatedNodeId = null;
+            deletingState = null;
+
+            // Igual que en 08 - Listas - Posibles Casos.pdf: xxx1 -> xxx2 -> xxx3 -> NULL
+            const n1 = { id: 'n1', addr: getNextAddress(), info: 10 }; // xxx1
+            const n2 = { id: 'n2', addr: getNextAddress(), info: 20 }; // xxx2
+            const n3 = { id: 'n3', addr: getNextAddress(), info: 30 }; // xxx3
+
+            lists = [
+                {
+                    id: 'lista1',
+                    label: 'Lista 1 (Principal)',
+                    ptrName: 'lista',
+                    nodes: [n1, n2, n3],
+                    auxIdx: null,
+                    foundIdx: null // Índice del nodo apuntado por buscar()
+                },
+                {
+                    id: 'lista2',
+                    label: 'Lista 2 (Secundaria / Auxiliar)',
+                    ptrName: 'listaAux',
+                    nodes: [],
+                    auxIdx: null,
+                    foundIdx: null
+                }
+            ];
+
+            codeLines = [
+                'insertarFinal(lista, 10);',
+                'insertarFinal(lista, 20);',
+                'insertarFinal(lista, 30);'
+            ];
+
+            setExplanation(
+                '<strong>Pizarra de Listas lista:</strong> Podés insertar <strong>Primero</strong>, <strong>Final</strong>, <strong>Ordenado</strong> o en una <strong>Posición (pos)</strong>; quitar del inicio, final o posición; y <strong>devolver el puntero a un nodo (<code class="font-bold">buscar</code>)</strong>.'
+            );
+            renderAll();
+        }
+
+        function addNewList() {
+            while (lists.some(l => l.id === `lista${listCounter}`)) {
+                listCounter++;
+            }
+            const n = listCounter;
+            const newL = {
+                id: `lista${n}`,
+                label: `Lista ${n} (Auxiliar)`,
+                ptrName: `lista${n}`,
+                nodes: [],
+                auxIdx: null,
+                foundIdx: null
+            };
+            lists.push(newL);
+            setExplanation(
+                `Se declaró una nueva lista: <code class="font-bold">Nodo *${newL.ptrName} = NULL;</code>`
+            );
+            renderAll();
+        }
+
+        function removeList(listId) {
+            if (lists.length <= 1) return;
+            lists = lists.filter(l => l.id !== listId);
+            renderAll();
+        }
+
+        function readInputVal(listId, clearAfter = true) {
+            const input = document.getElementById(`in_${listId}`);
+            if (!input) return Math.floor(Math.random() * 90) + 10;
+            const raw = input.value.trim();
+            const val = raw === '' ? Math.floor(Math.random() * 90) + 10 : parseInt(raw, 10);
+            if (clearAfter) input.value = '';
+            return isNaN(val) ? 15 : val;
+        }
+
+        function readPosVal(listId) {
+            const input = document.getElementById(`pos_${listId}`);
+            if (!input) return 0;
+            const raw = input.value.trim();
+            const pos = raw === '' ? 0 : parseInt(raw, 10);
+            return isNaN(pos) || pos < 0 ? 0 : pos;
+        }
+
+        // =====================================================================
+        // CASOS DE INSERTAR EN LISTA (Primero, Final, Ordenado, En Posición)
+        // =====================================================================
+        function insertarEnLista(listId, mode = 'inicio', customValue = null, fromRetorno = false) {
+            if (deletingState) return;
+            const l = lists.find(item => item.id === listId);
+            if (!l) return;
+
+            const val = customValue !== null ? customValue : readInputVal(listId);
+            const newAddr = getNextAddress();
+            const newNode = {
+                id: 'id_' + Date.now() + '_' + Math.random(),
+                addr: newAddr,
+                info: val
+            };
+
+            lastCreatedNodeId = newNode.id;
+            l.auxIdx = null;
+            l.foundIdx = null;
+            const argStr = fromRetorno ? 'retorno' : val;
+
+            if (mode === 'inicio') {
+                const oldHead = l.nodes.length === 0 ? 'NULL' : l.nodes[0].addr;
+                l.nodes.unshift(newNode);
+                codeLines.push(`insertarInicio(${l.ptrName}, ${argStr});${fromRetorno ? ` // inserta ${val}` : ''}`);
+                setExplanation(
+                    `<strong>Insertar Primero en ${l.label}:</strong> 1) Nuevo nodo <code class="font-bold">${newAddr}</code> (info=${val}). ` +
+                    `2) <code class="font-bold">nuevo-&gt;sgte = ${l.ptrName}</code> (${oldHead}). ` +
+                    `3) Muevo cabecera: <code class="font-bold">${l.ptrName} = ${newAddr}</code>.`
+                );
+            } else if (mode === 'final') {
+                if (l.nodes.length === 0) {
+                    l.nodes.push(newNode);
+                    codeLines.push(`insertarFinal(${l.ptrName}, ${argStr});${fromRetorno ? ` // inserta ${val}` : ''}`);
+                    setExplanation(
+                        `<strong>Insertar al Final (lista vacía):</strong> Como <code class="font-bold">${l.ptrName} == NULL</code>, el nuevo nodo <code class="font-bold">${newAddr}</code> (info=${val}) pasa a ser el primero (<code class="font-bold">${l.ptrName} = ${newAddr}</code>).`
+                    );
+                } else {
+                    const lastNode = l.nodes[l.nodes.length - 1];
+                    l.nodes.push(newNode);
+                    codeLines.push(`insertarFinal(${l.ptrName}, ${argStr});${fromRetorno ? ` // inserta ${val}` : ''}`);
+                    setExplanation(
+                        `<strong>Insertar al Final con <code class="text-sky-700">aux</code>:</strong> Recorremos con <code class="font-bold">while(aux-&gt;sgte != NULL) aux = aux-&gt;sgte;</code> hasta <code class="font-bold">${lastNode.addr}</code> y conectamos <code class="font-bold">aux-&gt;sgte = ${newAddr}</code>.`
+                    );
+                }
+            } else if (mode === 'ordenado') {
+                if (l.nodes.length === 0 || l.nodes[0].info >= val) {
+                    l.nodes.unshift(newNode);
+                    codeLines.push(`insertarOrdenado(${l.ptrName}, ${argStr}); // entra al inicio`);
+                    setExplanation(
+                        `<strong>Insertar Ordenado (entra primero):</strong> Como ${val} es menor o igual a la cabecera actual, <code class="font-bold">nuevo-&gt;sgte = ${l.ptrName}; ${l.ptrName} = ${newAddr};</code>.`
+                    );
+                } else {
+                    let idx = 0;
+                    while (idx + 1 < l.nodes.length && l.nodes[idx + 1].info < val) {
+                        idx++;
+                    }
+                    const antNode = l.nodes[idx];
+                    const nextNode = l.nodes[idx + 1] ? l.nodes[idx + 1].addr : 'NULL';
+                    l.nodes.splice(idx + 1, 0, newNode);
+                    codeLines.push(`insertarOrdenado(${l.ptrName}, ${argStr}); // después de ${antNode.info}`);
+                    setExplanation(
+                        `<strong>Insertar Ordenado:</strong> Avanzamos con <code class="font-bold">aux</code> hasta <code class="font-bold">${antNode.addr}</code> (info=${antNode.info}). ` +
+                        `Conectamos <code class="font-bold">nuevo-&gt;sgte = ${nextNode}</code> y <code class="font-bold">aux-&gt;sgte = ${newAddr}</code>.`
+                    );
+                }
+            } else if (mode === 'posicion') {
+                const pos = readPosVal(listId);
+                if (pos <= 0 || l.nodes.length === 0) {
+                    l.nodes.unshift(newNode);
+                    codeLines.push(`insertarEnPosicion(${l.ptrName}, ${argStr}, 0); // pos 0 (inicio)`);
+                    setExplanation(
+                        `<strong>Insertar en Posición 0:</strong> Como <code class="font-bold">pos == 0</code> (o lista vacía), se inserta al inicio: <code class="font-bold">nuevo-&gt;sgte = ${l.ptrName}; ${l.ptrName} = ${newAddr};</code>.`
+                    );
+                } else {
+                    const effectivePos = Math.min(pos, l.nodes.length);
+                    const antNode = l.nodes[effectivePos - 1];
+                    const nextAddr = l.nodes[effectivePos] ? l.nodes[effectivePos].addr : 'NULL';
+                    l.nodes.splice(effectivePos, 0, newNode);
+                    codeLines.push(`insertarEnPosicion(${l.ptrName}, ${argStr}, ${effectivePos});`);
+                    setExplanation(
+                        `<strong>Insertar en Posición ${effectivePos}:</strong> Avanzamos con <code class="font-bold">ant</code> hasta la posición ${effectivePos - 1} (<code class="font-bold">${antNode.addr}</code>) y conectamos <code class="font-bold">nuevo-&gt;sgte = ${nextAddr}; ant-&gt;sgte = ${newAddr};</code>.`
+                    );
+                }
+            }
+
+            renderAll();
+        }
+
+        function enviarRetornoALista(listId, mode = 'final') {
+            if (retornoVal === null || deletingState) return;
+            const savedVal = retornoVal;
+            retornoVal = null;
+            insertarEnLista(listId, mode, savedVal, true);
+        }
+
+        // =====================================================================
+        // CASOS DE QUITAR DE LA LISTA (Primero, Final, En Posición / Medio)
+        // =====================================================================
+        function quitarDeLista(listId, mode = 'inicio', customIdx = null, targetListId = null) {
+            if (deletingState) return;
+            const l = lists.find(item => item.id === listId);
+            if (!l) return;
+
+            if (l.nodes.length === 0) {
+                setExplanation(
+                    `<span class="text-red-700 font-bold">No se puede quitar de ${l.label}:</span> la lista está vacía (<code class="font-bold">${l.ptrName} == NULL</code>).`
+                );
+                return;
+            }
+
+            l.auxIdx = null;
+            l.foundIdx = null;
+            let idxToRemove = 0;
+            let actualMode = mode;
+
+            if (mode === 'inicio') {
+                idxToRemove = 0;
+            } else if (mode === 'final') {
+                idxToRemove = l.nodes.length - 1;
+            } else if (mode === 'posicion_input') {
+                const pos = readPosVal(listId);
+                if (pos < 0 || pos >= l.nodes.length) {
+                    setExplanation(
+                        `<span class="text-red-700 font-bold">Posición fuera de rango:</span> la posición <code class="font-bold">${pos}</code> no existe en ${l.label} (posiciones válidas: <code class="font-bold">0</code> a <code class="font-bold">${l.nodes.length - 1}</code>).`
+                    );
+                    return;
+                }
+                idxToRemove = pos;
+                if (idxToRemove === 0) actualMode = 'inicio';
+                else if (idxToRemove === l.nodes.length - 1) actualMode = 'final';
+                else actualMode = 'medio';
+            } else if (mode === 'indice' && customIdx !== null) {
+                idxToRemove = customIdx;
+                if (idxToRemove === 0) actualMode = 'inicio';
+                else if (idxToRemove === l.nodes.length - 1) actualMode = 'final';
+                else actualMode = 'medio';
+            }
+
+            const targetNode = l.nodes[idxToRemove];
+            if (!targetNode) return;
+
+            retornoVal = targetNode.info;
+            deletingState = {
+                listId,
+                nodeId: targetNode.id,
+                idx: idxToRemove,
+                mode: actualMode,
+                byPos: mode === 'posicion_input' || mode === 'indice'
+            };
+
+            if (actualMode === 'inicio') {
+                const nextAddr = l.nodes.length > 1 ? l.nodes[1].addr : 'NULL';
+                setExplanation(
+                    `<strong>Quitar Primero (pos 0) en ${l.label}:</strong> ` +
+                    `1) <span class="text-sky-700 font-bold">aux = ${l.ptrName} (${targetNode.addr})</span>. ` +
+                    `2) Rescato <code class="font-bold">retorno = ${targetNode.info}</code>. ` +
+                    `3) Muevo <code class="font-bold">${l.ptrName} = aux-&gt;sgte (${nextAddr})</code> y libero <code class="font-bold">delete aux;</code>...`
+                );
+            } else if (actualMode === 'final') {
+                const antAddr = idxToRemove > 0 ? l.nodes[idxToRemove - 1].addr : 'NULL';
+                setExplanation(
+                    `<strong>Quitar al Final (pos ${idxToRemove}) en ${l.label}:</strong> ` +
+                    `Me muevo con <span class="text-sky-700 font-bold">ant (${antAddr})</span> y <span class="text-sky-700 font-bold">aux (${targetNode.addr})</span> hasta el final, ` +
+                    `defino <code class="font-bold">ant-&gt;sgte = NULL</code> y libero <code class="font-bold">delete aux;</code>...`
+                );
+            } else {
+                const antAddr = l.nodes[idxToRemove - 1].addr;
+                const auxNextAddr = l.nodes[idxToRemove + 1] ? l.nodes[idxToRemove + 1].addr : 'NULL';
+                setExplanation(
+                    `<strong>Quitar en Posición ${idxToRemove} (3 punteros: <code class="text-sky-700">ant</code>, <code class="text-red-700">act</code> y <code class="text-sky-700">aux</code>):</strong> ` +
+                    `Ubico <code class="font-bold">act = ${targetNode.addr}</code>, puenteo <code class="font-bold">ant-&gt;sgte = aux (${antAddr} → ${auxNextAddr})</code> y libero <code class="font-bold">delete act;</code>...`
+                );
+            }
+
+            renderAll();
+
+            setTimeout(() => {
+                const wasByPos = deletingState && deletingState.byPos;
+                const [removed] = l.nodes.splice(idxToRemove, 1);
+                deletingState = null;
+                lastCreatedNodeId = null;
+                usedRetornoVar = true;
+
+                if (wasByPos && actualMode === 'medio') {
+                    codeLines.push(`retorno = quitarPosicion(${l.ptrName}, ${idxToRemove}); // quita ${removed.info} en pos ${idxToRemove}`);
+                } else if (actualMode === 'inicio') {
+                    codeLines.push(`retorno = quitarInicio(${l.ptrName}); // rescata ${removed.info}`);
+                } else if (actualMode === 'final') {
+                    codeLines.push(`retorno = quitarFinal(${l.ptrName}); // rescata ${removed.info}`);
+                } else {
+                    codeLines.push(`retorno = quitarPosicion(${l.ptrName}, ${idxToRemove}); // quita ${removed.info}`);
+                }
+
+                if (targetListId) {
+                    const dest = lists.find(item => item.id === targetListId);
+                    if (dest) {
+                        const newAddr = getNextAddress();
+                        const newNode = {
+                            id: 'id_' + Date.now() + '_' + Math.random(),
+                            addr: newAddr,
+                            info: removed.info
+                        };
+                        lastCreatedNodeId = newNode.id;
+                        dest.nodes.push(newNode);
+                        retornoVal = null;
+                        codeLines.push(`insertarFinal(${dest.ptrName}, retorno); // pasa ${removed.info} a ${dest.label}`);
+                        setExplanation(
+                            `<strong>Transferencia lista:</strong> Se extrajo <code class="font-bold">retorno = ${removed.info}</code> de ${l.label} y se insertó al final de <strong>${dest.label}</strong> (${newAddr}).`
+                        );
+                    }
+                }
+
+                renderAll();
+            }, 850);
+        }
+
+        // =====================================================================
+        // DEVOLVER EL PUNTERO A UN NODO: Nodo* buscar(Nodo *lista, int dato)
+        // =====================================================================
+        function buscarNodoEnLista(listId, customIdx = null) {
+            if (deletingState) return;
+            const l = lists.find(item => item.id === listId);
+            if (!l) return;
+
+            // Limpiar búsqueda previa en todas las listas
+            lists.forEach(item => { item.foundIdx = null; item.auxIdx = null; });
+            usedBuscadoVar = true;
+
+            if (customIdx !== null && l.nodes[customIdx]) {
+                const node = l.nodes[customIdx];
+                l.foundIdx = customIdx;
+                ptrBuscadoInfo = { addr: node.addr, info: node.info, listLabel: l.label };
+                codeLines.push(`buscado = buscar(${l.ptrName}, ${node.info}); // devuelve ${node.addr}`);
+                setExplanation(
+                    `<strong>Puntero devuelto (<code class="text-violet-700 font-bold">buscar(${l.ptrName}, ${node.info})</code>):</strong> ` +
+                    `Recorrimos la lista hasta encontrar <code class="font-bold">aux-&gt;info == ${node.info}</code> en la posición ${customIdx} y retornamos la dirección de memoria <span class="text-violet-800 font-extrabold">${node.addr}</span>.`
+                );
+                renderAll();
+                return;
+            }
+
+            const input = document.getElementById(`in_${listId}`);
+            const raw = input ? input.value.trim() : '';
+            if (raw === '') {
+                setExplanation(
+                    `<span class="text-violet-800 font-bold">Tip para Buscar Puntero:</span> Escribí el valor que querés buscar en el campo <code class="font-bold">info</code> y presioná <strong>🔎 Buscar Puntero</strong> (o tocá <strong>[ptr]</strong> arriba de cualquier nodo).`
+                );
+                return;
+            }
+
+            const valToFind = parseInt(raw, 10);
+            input.value = '';
+
+            const foundIndex = l.nodes.findIndex(n => n.info === valToFind);
+            if (foundIndex !== -1) {
+                const node = l.nodes[foundIndex];
+                l.foundIdx = foundIndex;
+                ptrBuscadoInfo = { addr: node.addr, info: node.info, listLabel: l.label };
+                codeLines.push(`buscado = buscar(${l.ptrName}, ${valToFind}); // devuelve ${node.addr}`);
+                setExplanation(
+                    `<strong>¡Nodo encontrado! <code class="text-violet-700 font-bold">buscar(${l.ptrName}, ${valToFind})</code> devuelve <code class="font-bold">${node.addr}</code>:</strong> ` +
+                    `El puntero <span class="text-violet-800 font-extrabold">↑ buscado = ${node.addr}</span> apunta directamente al nodo en la posición ${foundIndex} (<code class="font-bold">buscado-&gt;info == ${node.info}</code>).`
+                );
+            } else {
+                ptrBuscadoInfo = { notFound: true, searchedVal: valToFind };
+                codeLines.push(`buscado = buscar(${l.ptrName}, ${valToFind}); // devuelve NULL (no está)`);
+                setExplanation(
+                    `<strong>Búsqueda sin éxito (<code class="text-violet-700 font-bold">buscar(${l.ptrName}, ${valToFind}) == NULL</code>):</strong> ` +
+                    `El puntero <code class="font-bold">aux</code> recorrió toda la lista hasta llegar a <code class="font-bold">NULL</code> sin encontrar el valor ${valToFind}, por lo que devuelve <code class="font-bold">NULL</code>.`
+                );
+            }
+
+            renderAll();
+        }
+
+        // =====================================================================
+        // RECORRER LA LISTA PASO A PASO CON UN PUNTERO AUX (while(aux != NULL))
+        // =====================================================================
+        function stepRecorrerAux(listId) {
+            if (deletingState) return;
+            const l = lists.find(item => item.id === listId);
+            if (!l) return;
+
+            if (l.nodes.length === 0) {
+                setExplanation(
+                    `La lista <strong>${l.label}</strong> está vacía (<code class="font-bold">${l.ptrName} == NULL</code>). No hay nodos para recorrer con <code class="font-bold">aux</code>.`
+                );
+                return;
+            }
+
+            if (l.auxIdx === null) {
+                l.auxIdx = 0;
+                const node = l.nodes[0];
+                setExplanation(
+                    `<strong>Inicio del recorrido en ${l.label}:</strong> Ejecutamos <code class="font-bold">Nodo *aux = ${l.ptrName};</code>. ` +
+                    `El puntero celeste <span class="text-sky-700 font-bold">↑ aux</span> apunta a <code class="font-bold">${node.addr}</code> (<code class="font-bold">aux-&gt;info == ${node.info}</code>) sin mover <code class="font-bold">${l.ptrName}</code>.`
+                );
+            } else if (l.auxIdx + 1 < l.nodes.length) {
+                l.auxIdx++;
+                const node = l.nodes[l.auxIdx];
+                setExplanation(
+                    `<strong>Avanzando en el <code class="font-bold">while(aux != NULL)</code>:</strong> Ejecutamos <code class="font-bold">aux = aux-&gt;sgte;</code>. ` +
+                    `Ahora <span class="text-sky-700 font-bold">↑ aux</span> apunta a <code class="font-bold">${node.addr}</code> (<code class="font-bold">aux-&gt;info == ${node.info}</code>).`
+                );
+            } else {
+                l.auxIdx = null;
+                setExplanation(
+                    `<strong>Fin del recorrido (<code class="font-bold">aux == NULL</code>):</strong> Al hacer <code class="font-bold">aux = aux-&gt;sgte;</code> en el último nodo, <code class="font-bold">aux</code> llegó a <code class="font-bold">NULL</code> y termina el ciclo <code class="font-bold">while(aux != NULL)</code>.`
+                );
+            }
+
+            renderAll();
+        }
+
+        function renderRetornoBar() {
+            const valEl = document.getElementById('retornoValue');
+            const boxEl = document.getElementById('retornoBox');
+            const ptrValEl = document.getElementById('ptrBuscadoValue');
+            const ptrBoxEl = document.getElementById('ptrBuscadoBox');
+            const btnsEl = document.getElementById('sendRetornoButtons');
+
+            if (retornoVal !== null) {
+                valEl.textContent = retornoVal;
+                valEl.className = 'text-xl font-extrabold text-green-800 leading-tight';
+                boxEl.className = 'w-28 h-14 border-[3px] border-green-700 bg-green-50 flex flex-col items-center justify-center relative shadow-sm';
+            } else {
+                valEl.textContent = 'vacío';
+                valEl.className = 'text-sm font-bold text-neutral-400 leading-tight';
+                boxEl.className = 'w-28 h-14 border-[3px] border-green-700 bg-white flex flex-col items-center justify-center relative';
+            }
+
+            if (ptrBuscadoInfo) {
+                if (ptrBuscadoInfo.notFound) {
+                    ptrValEl.textContent = `NULL (no está ${ptrBuscadoInfo.searchedVal})`;
+                    ptrValEl.className = 'text-xs font-extrabold text-red-700 leading-tight mt-0.5';
+                    ptrBoxEl.className = 'w-36 h-14 border-[3px] border-red-600 bg-red-50 flex flex-col items-center justify-center relative px-2';
+                } else {
+                    ptrValEl.textContent = `${ptrBuscadoInfo.addr} (info:${ptrBuscadoInfo.info})`;
+                    ptrValEl.className = 'text-xs font-extrabold text-violet-900 leading-tight mt-0.5';
+                    ptrBoxEl.className = 'w-36 h-14 border-[3px] border-violet-700 bg-violet-50 flex flex-col items-center justify-center relative px-2 shadow-sm';
+                }
+            } else {
+                ptrValEl.textContent = 'NULL';
+                ptrValEl.className = 'text-sm font-extrabold text-neutral-400 leading-tight mt-0.5';
+                ptrBoxEl.className = 'w-36 h-14 border-[3px] border-violet-700 bg-white flex flex-col items-center justify-center relative px-2';
+            }
+
+            btnsEl.innerHTML = lists.map(l => `
+                <div class="flex items-center gap-1">
+                    <button 
+                        onclick="enviarRetornoALista('${l.id}', 'final')"
+                        ${retornoVal === null ? 'disabled' : ''}
+                        class="px-2 py-1 text-xs font-bold border-2 border-black transition ${
+                            retornoVal !== null
+                                ? 'bg-green-700 hover:bg-green-800 text-white cursor-pointer shadow-sm'
+                                : 'bg-neutral-100 text-neutral-400 border-neutral-300 cursor-not-allowed'
+                        }">
+                        ↳ a ${l.label} (Final)
+                    </button>
+                    <button 
+                        onclick="enviarRetornoALista('${l.id}', 'ordenado')"
+                        ${retornoVal === null ? 'disabled' : ''}
+                        class="px-2 py-1 text-xs font-bold border-2 border-black transition ${
+                            retornoVal !== null
+                                ? 'bg-amber-300 hover:bg-amber-400 text-black cursor-pointer shadow-sm'
+                                : 'bg-neutral-100 text-neutral-400 border-neutral-300 cursor-not-allowed'
+                        }"
+                        title="Insertar retorno manteniendo orden en ${l.label}">
+                        (Ordenado)
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderBottomUpArrow(label, colorHex = '#3730a3', badgeBg = '') {
+            return `
+                <div class="flex flex-col items-center mt-1">
+                    <svg width="24" height="34" viewBox="0 0 24 34" class="overflow-visible">
+                        <line x1="12" y1="32" x2="12" y2="4" stroke="${colorHex}" stroke-width="3.2" />
+                        <polyline points="5,14 12,3 19,14" fill="none" stroke="${colorHex}" stroke-width="3.2" stroke-linejoin="round" />
+                    </svg>
+                    <span class="text-xs font-extrabold text-black whitespace-nowrap mt-0.5 ${badgeBg}">${label}</span>
+                </div>
+            `;
+        }
+
+        function renderLists() {
+            const container = document.getElementById('listsContainer');
+
+            container.innerHTML = lists.map(l => {
+                const otherLists = lists.filter(o => o.id !== l.id);
+                const isDeletingThis = deletingState && deletingState.listId === l.id;
+
+                const sendDirectHtml = otherLists.map(other => `
+                    <button 
+                        onclick="quitarDeLista('${l.id}', 'inicio', null, '${other.id}')"
+                        ${l.nodes.length === 0 ? 'disabled' : ''}
+                        class="px-2.5 py-1 text-xs font-bold border border-black transition ${
+                            l.nodes.length > 0
+                                ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 cursor-pointer'
+                                : 'bg-neutral-100 text-neutral-400 border-neutral-300 cursor-not-allowed'
+                        }">
+                        Quitar primero y pasar a ${other.label} →
+                    </button>
+                `).join('');
+
+                let diagramHtml = '';
+
+                if (l.nodes.length === 0) {
+                    diagramHtml = `
+                        <div class="my-8 flex items-center justify-center w-full">
+                            <div class="flex flex-col items-end mr-3">
+                                <span class="text-sm font-extrabold text-black mb-0.5">${l.ptrName} = NULL</span>
+                                <svg width="105" height="20" viewBox="0 0 105 20" class="overflow-visible">
+                                    <line x1="0" y1="10" x2="98" y2="10" stroke="#15803d" stroke-width="3.2" />
+                                    <polyline points="86,4 100,10 86,16" fill="none" stroke="#15803d" stroke-width="3.2" stroke-linejoin="round" />
+                                </svg>
+                            </div>
+                            <span class="text-3xl font-extrabold tracking-wider text-black">NULL</span>
+                        </div>
+                    `;
+                } else {
+                    const nodesRowHtml = l.nodes.map((node, idx) => {
+                        const isFirst = idx === 0;
+                        const isAnimated = node.id === lastCreatedNodeId;
+                        const isNodeBeingDeleted = isDeletingThis && deletingState.idx === idx;
+                        const isNodeFound = !isDeletingThis && l.foundIdx === idx;
+
+                        const bottomPointers = [];
+
+                        // 1) Puntero principal lista = xxx1
+                        const showListaHere = (!isDeletingThis && isFirst) ||
+                            (isDeletingThis && deletingState.mode === 'inicio' && idx === 1);
+
+                        if (showListaHere) {
+                            bottomPointers.push(renderBottomUpArrow(`${l.ptrName} = ${node.addr}`, '#3730a3'));
+                        }
+
+                        // 2) Punteros de borrado (Caso 1: aux, Caso 2: ant y aux, Caso 3: ant, act y aux)
+                        if (isDeletingThis) {
+                            const delIdx = deletingState.idx;
+                            const delMode = deletingState.mode;
+
+                            if (delMode === 'inicio' && idx === 0) {
+                                bottomPointers.push(renderBottomUpArrow(`aux = ${node.addr}`, '#0ea5e9'));
+                            } else if (delMode === 'final') {
+                                if (idx === delIdx - 1) {
+                                    bottomPointers.push(renderBottomUpArrow('ant', '#0ea5e9'));
+                                }
+                                if (idx === delIdx) {
+                                    bottomPointers.push(renderBottomUpArrow(`aux = ${node.addr}`, '#0ea5e9'));
+                                }
+                            } else if (delMode === 'medio') {
+                                if (idx === delIdx - 1) {
+                                    bottomPointers.push(renderBottomUpArrow('ant', '#0ea5e9'));
+                                }
+                                if (idx === delIdx) {
+                                    bottomPointers.push(renderBottomUpArrow('act', '#dc2626'));
+                                }
+                                if (idx === delIdx + 1) {
+                                    bottomPointers.push(renderBottomUpArrow('aux', '#0ea5e9'));
+                                }
+                            }
+                        }
+
+                        // 3) Puntero aux interactivo cuando el usuario recorre la lista
+                        if (!isDeletingThis && l.auxIdx === idx) {
+                            bottomPointers.push(renderBottomUpArrow(`aux = ${node.addr}`, '#0284c7', 'bg-sky-100 px-1.5 border border-sky-600'));
+                        }
+
+                        // 4) Puntero devuelto por buscar(lista, info)
+                        if (isNodeFound) {
+                            bottomPointers.push(renderBottomUpArrow(`buscado = ${node.addr}`, '#6d28d9', 'bg-violet-100 px-1.5 border border-violet-700 text-violet-950'));
+                        }
+
+                        return `
+                            <div class="flex items-start ${isAnimated ? 'animate-nodo' : ''}">
+                                <!-- Columna del Nodo + Punteros inferiores -->
+                                <div class="flex flex-col items-center">
+                                    <div class="flex flex-col ${isNodeBeingDeleted ? 'border-[3px] border-red-600 bg-red-50/30 p-2 -m-2' : (isNodeFound ? 'border-[3px] border-violet-700 bg-violet-50/40 p-1.5 -m-1.5' : '')}">
+                                        <!-- Cabecera del nodo: dirección xxx1 + badge de posición + botones rápidos [ptr] y [quitar] -->
+                                        <div class="flex items-center justify-between mb-1 gap-1">
+                                            <div class="flex items-center gap-1">
+                                                <span class="text-xs sm:text-sm font-extrabold text-black leading-none">${node.addr}</span>
+                                                <span class="text-[10px] font-bold bg-neutral-200 text-neutral-700 px-1 border border-neutral-400 leading-tight" title="Posición actual en la lista">pos ${idx}</span>
+                                            </div>
+                                            <div class="flex items-center gap-0.5">
+                                                <button 
+                                                    onclick="buscarNodoEnLista('${l.id}', ${idx})"
+                                                    class="text-[10px] font-extrabold text-violet-800 hover:bg-violet-100 px-1 border border-transparent hover:border-violet-600 cursor-pointer transition"
+                                                    title="Devolver el puntero a este nodo (${node.addr})">
+                                                    [ptr]
+                                                </button>
+                                                <button 
+                                                    onclick="quitarDeLista('${l.id}', 'indice', ${idx})"
+                                                    class="text-[10px] font-extrabold text-red-700 hover:bg-red-100 px-1 border border-transparent hover:border-red-600 cursor-pointer transition"
+                                                    title="Quitar este nodo en pos ${idx} (${node.addr})">
+                                                    [quitar]
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Caja horizontal dividida [ info | *sgte ] -->
+                                        <div class="nodo-box">
+                                            <div class="nodo-info">
+                                                ${isNodeBeingDeleted ? `
+                                                    <span class="text-xs text-neutral-300 font-bold leading-none">vacío</span>
+                                                ` : `
+                                                    <span class="text-[10px] text-neutral-400 font-bold leading-none mb-0.5">info</span>
+                                                    <span class="text-2xl font-extrabold text-black leading-tight">${node.info}</span>
+                                                `}
+                                            </div>
+                                            <div class="nodo-sgte">
+                                                *sgte
+                                            </div>
+                                        </div>
+                                        ${isNodeBeingDeleted ? `
+                                            <span class="text-[11px] font-extrabold text-red-700 mt-1 text-center">delete ${deletingState.mode === 'medio' ? 'act' : 'aux'}</span>
+                                        ` : ''}
+                                    </div>
+
+                                    <!-- Flechas verticales ↑ desde abajo (lista, nuevo, aux, ant, act, buscado) -->
+                                    <div class="min-h-[64px] flex items-start justify-center gap-2.5 pt-1">
+                                        ${bottomPointers.join('')}
+                                    </div>
+                                </div>
+
+                                <!-- Flecha horizontal verde que sale de *sgte hacia la derecha -->
+                                <div class="flex items-center h-[72px] mt-[22px]">
+                                    <svg width="48" height="24" viewBox="0 0 48 24" class="overflow-visible -ml-1.5">
+                                        <line x1="0" y1="12" x2="42" y2="12" stroke="#15803d" stroke-width="3.2" />
+                                        <polyline points="32,5 44,12 32,19" fill="none" stroke="#15803d" stroke-width="3.2" stroke-linejoin="round" />
+                                    </svg>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    diagramHtml = `
+                        <div class="flex items-start py-3 px-2">
+                            ${nodesRowHtml}
+                            <!-- NULL al final de la cadena horizontal -->
+                            <div class="flex items-center h-[72px] mt-[22px] pl-1">
+                                <span class="text-2xl sm:text-3xl font-extrabold tracking-wider text-black">NULL</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="bg-white border-2 border-black neo-shadow p-4 sm:p-5 flex flex-col justify-between">
+                        <!-- Cabecera de la lista -->
+                        <div>
+                            <div class="flex flex-wrap items-center justify-between pb-2.5 mb-3.5 border-b-2 border-black gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-extrabold text-base sm:text-lg">${l.label}</span>
+                                    <span class="text-xs text-neutral-600 font-bold">(Nodo *${l.ptrName})</span>
+                                </div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button 
+                                        onclick="stepRecorrerAux('${l.id}')"
+                                        class="px-3 py-1 bg-sky-100 hover:bg-sky-200 text-sky-950 text-xs font-extrabold border-2 border-black neo-shadow-sm cursor-pointer transition">
+                                        ${l.auxIdx === null ? '👣 Recorrer (aux = ' + l.ptrName + ')' : '→ Avanzar aux = aux->sgte'}
+                                    </button>
+                                    ${lists.length > 1 ? `
+                                        <button onclick="removeList('${l.id}')" class="text-xs text-red-700 hover:underline font-bold cursor-pointer">
+                                            [x] Quitar Lista
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <!-- Barra de Operaciones Completa: Entradas (info y pos) + Insertar + Quitar + Devolver Puntero -->
+                            <div class="flex flex-wrap items-center gap-2 mb-3">
+                                <!-- Inputs de dato (info) y posición (pos) -->
+                                <div class="flex items-center gap-1.5 bg-neutral-100 p-1 border-2 border-black">
+                                    <div class="flex flex-col">
+                                        <label class="text-[9px] font-extrabold uppercase text-neutral-600 px-1">Dato (info)</label>
+                                        <input 
+                                            id="in_${l.id}" 
+                                            type="number" 
+                                            placeholder="ej: 25" 
+                                            class="w-20 border border-black bg-white px-2 py-1 text-xs sm:text-sm font-bold focus:outline-none focus:bg-yellow-50"
+                                            onkeydown="if(event.key==='Enter') insertarEnLista('${l.id}', 'ordenado')">
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <label class="text-[9px] font-extrabold uppercase text-neutral-600 px-1">Posición (pos)</label>
+                                        <input 
+                                            id="pos_${l.id}" 
+                                            type="number" 
+                                            min="0"
+                                            value="1"
+                                            placeholder="pos" 
+                                            class="w-16 border border-black bg-white px-2 py-1 text-xs sm:text-sm font-bold focus:outline-none focus:bg-yellow-50">
+                                    </div>
+                                </div>
+                                
+                                <!-- 4 Opciones de Insertar: Primero, Final, Ordenado, En Posición -->
+                                <div class="flex flex-wrap items-center gap-1 bg-emerald-50 p-1.5 border-2 border-black">
+                                    <span class="text-[11px] font-extrabold text-green-900 px-1">Insertar:</span>
+                                    <button 
+                                        onclick="insertarEnLista('${l.id}', 'inicio')" 
+                                        class="px-2 py-1 bg-green-700 hover:bg-green-800 text-white text-xs font-bold border border-black cursor-pointer"
+                                        title="Insertar al principio de la lista">
+                                        Primero
+                                    </button>
+                                    <button 
+                                        onclick="insertarEnLista('${l.id}', 'final')" 
+                                        class="px-2 py-1 bg-green-700 hover:bg-green-800 text-white text-xs font-bold border border-black cursor-pointer"
+                                        title="Recorrer con aux hasta el final e insertar">
+                                        Final
+                                    </button>
+                                    <button 
+                                        onclick="insertarEnLista('${l.id}', 'ordenado')" 
+                                        class="px-2 py-1 bg-emerald-900 hover:bg-black text-white text-xs font-bold border border-black cursor-pointer"
+                                        title="Insertar manteniendo el orden ascendente">
+                                        Ordenado
+                                    </button>
+                                    <button 
+                                        onclick="insertarEnLista('${l.id}', 'posicion')" 
+                                        class="px-2 py-1 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold border border-black cursor-pointer"
+                                        title="Insertar en el índice indicado en el casillero Posición (pos)">
+                                        En Posición
+                                    </button>
+                                </div>
+
+                                <!-- 3 Opciones de Quitar: Primero, Final, En Posición -->
+                                <div class="flex flex-wrap items-center gap-1 bg-red-50 p-1.5 border-2 border-black">
+                                    <span class="text-[11px] font-extrabold text-red-900 px-1">Quitar:</span>
+                                    <button 
+                                        onclick="quitarDeLista('${l.id}', 'inicio')" 
+                                        class="px-2 py-1 bg-red-700 hover:bg-red-800 text-white text-xs font-bold border border-black cursor-pointer"
+                                        title="Quitar el primer nodo (pos 0)">
+                                        Primero
+                                    </button>
+                                    <button 
+                                        onclick="quitarDeLista('${l.id}', 'final')" 
+                                        class="px-2 py-1 bg-red-700 hover:bg-red-800 text-white text-xs font-bold border border-black cursor-pointer"
+                                        title="Quitar el último nodo de la lista">
+                                        Final
+                                    </button>
+                                    <button 
+                                        onclick="quitarDeLista('${l.id}', 'posicion_input')" 
+                                        class="px-2 py-1 bg-rose-900 hover:bg-black text-white text-xs font-bold border border-black cursor-pointer"
+                                        title="Quitar el nodo ubicado en el casillero Posición (pos)">
+                                        En Posición
+                                    </button>
+                                </div>
+
+                                <!-- Devolver el puntero a un nodo (buscar) -->
+                                <div class="flex flex-wrap items-center gap-1 bg-violet-50 p-1.5 border-2 border-black">
+                                    <button 
+                                        onclick="buscarNodoEnLista('${l.id}')" 
+                                        class="px-2.5 py-1 bg-violet-700 hover:bg-violet-800 text-white text-xs font-bold border border-black cursor-pointer"
+                                        title="Busca el dato escrito en 'info' y devuelve el puntero (dirección) al nodo">
+                                        🔎 Buscar Puntero (info)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Transferencia rápida y ayuda contextual -->
+                            <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    ${sendDirectHtml}
+                                    <button 
+                                        onclick="enviarRetornoALista('${l.id}', 'ordenado')"
+                                        ${retornoVal === null ? 'disabled' : ''}
+                                        class="px-2.5 py-1 text-xs font-bold border border-black transition ${
+                                            retornoVal !== null
+                                                ? 'bg-amber-300 hover:bg-amber-400 text-black cursor-pointer'
+                                                : 'bg-neutral-100 text-neutral-400 border-neutral-300 cursor-not-allowed'
+                                        }">
+                                        + Insertar retorno (${retornoVal !== null ? retornoVal : 'vacío'}) Ordenado acá
+                                    </button>
+                                </div>
+                                <span class="text-[11px]">Cada nodo muestra su <strong>pos</strong> y tiene botones rápidos <strong>[ptr]</strong> (devolver puntero) y <strong>[quitar]</strong>.</span>
+                            </div>
+                        </div>
+
+                        <!-- Dibujo horizontal de los nodos de la lista -->
+                        <div class="mt-4 pt-3 border-t-2 border-dashed border-neutral-300 flex-1 flex items-center overflow-x-auto">
+                            ${diagramHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // =====================================================================
+        // DATOS Y RENDERIZADO DEL MODO PRESENTACIÓN ("EXPLICAR LISTAS")
+        // =====================================================================
+        const PRESENTATIONS = {
+            ins_inicio: {
+                title: 'A) Insertar Primero (al Inicio)',
+                opNote: '⚡ Operación O(1) (directa): No requiere recorrer la lista con un while porque ya tenemos el puntero cabecera lista apuntando al principio.',
+                code: [
+                    'void insertarInicio(Nodo *&lista, int dato){',
+                    '    Nodo *nuevo = new Nodo();',
+                    '    nuevo->info = dato;',
+                    '    nuevo->sgte = lista;',
+                    '    lista = nuevo;',
+                    '}'
+                ],
+                slides: [
+                    {
+                        badge: 'Estado Inicial',
+                        subtitle: 'Lista original con 2 nodos (xxx1 y xxx2)',
+                        title: '0) Lista antes de insertar primero',
+                        text: 'El puntero cabecera <strong>lista</strong> apunta al primer nodo (<strong>xxx1</strong> con <code>info = 10</code>), que a su vez apunta a <strong>xxx2</strong> (<code>20</code>) y luego a <strong>NULL</strong>. Queremos insertar el valor <strong>5</strong> al principio.',
+                        activeLines: [0],
+                        state: 'ii_0'
+                    },
+                    {
+                        badge: 'Paso 1 de 3',
+                        subtitle: 'Nodo *nuevo = new Nodo(); nuevo->info = 5;',
+                        title: '1) Crear el nodo en el Heap y cargarle el dato',
+                        text: 'Reservamos memoria dinámica con <code>new Nodo()</code> (dirección <strong>xxx0</strong>, apuntada por <strong>↑ nuevo</strong>) y guardamos <code>nuevo-&gt;info = 5;</code>. Observá que <strong>xxx0 todavía está suelto</strong> y no toca a <code>xxx1</code>.',
+                        activeLines: [1, 2],
+                        state: 'ii_1'
+                    },
+                    {
+                        badge: 'Paso 2 de 3',
+                        subtitle: 'nuevo->sgte = lista;',
+                        title: '2) Conectar nuevo->sgte hacia el antiguo primero',
+                        text: '<strong>¡Regla de oro!</strong> Antes de modificar <code>lista</code>, hacemos <code>nuevo-&gt;sgte = lista;</code> (ahora <strong>xxx0</strong> apunta a <strong>xxx1</strong>). Si moviéramos <code>lista</code> primero, perderíamos la dirección de <code>xxx1</code> y de toda la lista.',
+                        activeLines: [3],
+                        state: 'ii_2'
+                    },
+                    {
+                        badge: 'Paso 3 de 3',
+                        subtitle: 'lista = nuevo;',
+                        title: '3) Actualizar la cabecera lista = nuevo',
+                        text: 'Ahora sí actualizamos la cabecera haciendo <code>lista = nuevo;</code>. El nodo <strong>xxx0</strong> queda oficialmente como el nuevo primer elemento (pos 0) de la lista.',
+                        activeLines: [4],
+                        state: 'ii_3'
+                    }
+                ]
+            },
+            ins_final: {
+                title: 'B) Insertar al Final (recorriendo con aux)',
+                opNote: '👣 Operación con recorrido O(n): Como solo conocemos el inicio (lista), necesitamos un puntero auxiliar (aux) que avance hasta el último nodo (aquel cuyo sgte == NULL).',
+                code: [
+                    'void insertarFinal(Nodo *&lista, int dato){',
+                    '    Nodo *nuevo = new Nodo();',
+                    '    nuevo->info = dato;',
+                    '    nuevo->sgte = NULL;',
+                    '    if(lista == NULL) lista = nuevo;',
+                    '    else {',
+                    '        Nodo *aux = lista;',
+                    '        while(aux->sgte != NULL){',
+                    '            aux = aux->sgte;',
+                    '        }',
+                    '        aux->sgte = nuevo;',
+                    '    }',
+                    '}'
+                ],
+                slides: [
+                    {
+                        badge: 'Paso 1 de 3',
+                        subtitle: 'nuevo->info = 30; nuevo->sgte = NULL;',
+                        title: '1) Crear el nuevo nodo con *sgte apuntando a NULL',
+                        text: 'Creamos el nodo <strong>xxx3</strong> en memoria con <code>info = 30</code>. Como sabemos que va a ser el último de la fila, su puntero <code>nuevo-&gt;sgte</code> nace apuntando a <strong>NULL</strong> (todavía desconectado de la lista).',
+                        activeLines: [1, 2, 3],
+                        state: 'if_1'
+                    },
+                    {
+                        badge: 'Paso 2 de 3',
+                        subtitle: 'Nodo *aux = lista; while(aux->sgte != NULL) aux = aux->sgte;',
+                        title: '2) Recorrer con aux hasta frenar en el último nodo',
+                        text: 'Inicializamos <code>Nodo *aux = lista;</code> y avanzamos mientras <code>aux-&gt;sgte != NULL</code>. Así <strong>↑ aux</strong> frena exactamente encima del último nodo actual (<strong>xxx2</strong>) sin pasarse a NULL.',
+                        activeLines: [6, 7, 8, 9],
+                        state: 'if_2'
+                    },
+                    {
+                        badge: 'Paso 3 de 3',
+                        subtitle: 'aux->sgte = nuevo;',
+                        title: '3) Enganchar el último nodo con nuevo',
+                        text: 'Hacemos <code>aux-&gt;sgte = nuevo;</code>. El puntero <code>*sgte</code> de <strong>xxx2</strong> deja de apuntar a NULL y ahora apunta a <strong>xxx3</strong>. ¡Y el puntero cabecera <strong>lista</strong> jamás se movió de <code>xxx1</code>!',
+                        activeLines: [10],
+                        state: 'if_3'
+                    }
+                ]
+            },
+            ins_medio: {
+                title: 'C) Insertar Ordenado o en Posición (en Medio)',
+                opNote: '🧩 Inserción intermedia: Permite mantener una lista siempre ordenada (ej. por legajo o DNI) o insertar en un índice específico usando dos referencias.',
+                code: [
+                    '// Insertar en medio (entre ant y act)',
+                    'Nodo *nuevo = new Nodo();',
+                    'nuevo->info = 20;',
+                    'Nodo *act = lista;',
+                    'Nodo *ant = NULL;',
+                    'while(act != NULL && act->info < 20){',
+                    '    ant = act;',
+                    '    act = act->sgte;',
+                    '}',
+                    'nuevo->sgte = act;',
+                    'ant->sgte = nuevo;'
+                ],
+                slides: [
+                    {
+                        badge: 'Paso 1 de 3',
+                        subtitle: 'Buscar hueco entre 10 (xxx1) y 30 (xxx3)',
+                        title: '1) Avanzar con ant y act hasta encontrar la posición',
+                        text: 'Queremos insertar el <strong>20</strong> en una lista que tiene <code>10</code> y <code>30</code>. Avanzamos con <strong>↑ act</strong> y su perseguidor <strong>↑ ant</strong> hasta que <code>ant</code> queda en <strong>xxx1 (10)</strong> y <code>act</code> en <strong>xxx3 (30)</strong>.',
+                        activeLines: [3, 4, 5, 6, 7, 8],
+                        state: 'im_1'
+                    },
+                    {
+                        badge: 'Paso 2 de 3',
+                        subtitle: 'Nodo *nuevo = new Nodo(); nuevo->info = 20;',
+                        title: '2) Crear el nodo nuevo que irá entre ant y act',
+                        text: 'Creamos el nodo <strong>xxx2</strong> (<code>info = 20</code>) apuntado por <strong>↑ nuevo</strong>. Para meterlo entre <code>xxx1</code> y <code>xxx3</code> tendremos que redireccionar dos flechas.',
+                        activeLines: [1, 2],
+                        state: 'im_2'
+                    },
+                    {
+                        badge: 'Paso 3 de 3',
+                        subtitle: 'nuevo->sgte = act; ant->sgte = nuevo;',
+                        title: '3) Conectar nuevo con act y ant con nuevo',
+                        text: 'Enganchamos <code>nuevo-&gt;sgte = act;</code> (<strong>xxx2 → xxx3</strong>) y <code>ant-&gt;sgte = nuevo;</code> (<strong>xxx1 → xxx2</strong>). El nodo quedó intercalado en el medio manteniendo el orden <code>10 → 20 → 30</code>.',
+                        activeLines: [9, 10],
+                        state: 'im_3'
+                    }
+                ]
+            },
+            qui_inicio: {
+                title: 'D) Quitar Primero (del Inicio)',
+                opNote: '🗑️ Desencadenar cabecera O(1): Es idéntico al pop() de una pila. Guardamos la dirección en aux, avanzamos lista al segundo nodo y liberamos aux.',
+                code: [
+                    'int quitarInicio(Nodo *&lista){',
+                    '    Nodo *aux = lista;',
+                    '    int dato = aux->info;',
+                    '    lista = aux->sgte;',
+                    '    delete aux;',
+                    '    return dato;',
+                    '}'
+                ],
+                slides: [
+                    {
+                        badge: 'Paso 1 de 3',
+                        subtitle: 'Nodo *aux = lista; int dato = aux->info;',
+                        title: '1) Apuntar aux al primero y rescatar el dato',
+                        text: 'Guardamos la dirección del primer nodo en <strong>↑ aux</strong> (<code>aux = lista;</code>) y copiamos su información en <code>dato = aux-&gt;info;</code> para no perderla al borrar el nodo.',
+                        activeLines: [1, 2],
+                        state: 'qi_1'
+                    },
+                    {
+                        badge: 'Paso 2 de 3',
+                        subtitle: 'lista = aux->sgte;',
+                        title: '2) Avanzar la cabecera lista al segundo nodo',
+                        text: 'Movemos el puntero principal al siguiente elemento: <code>lista = aux-&gt;sgte;</code>. Ahora <strong>↑ lista</strong> apunta directamente a <strong>xxx2</strong>.',
+                        activeLines: [3],
+                        state: 'qi_2'
+                    },
+                    {
+                        badge: 'Paso 3 de 3',
+                        subtitle: 'delete aux; return dato;',
+                        title: '3) Liberar la memoria de aux con delete',
+                        text: 'Ejecutamos <code>delete aux;</code> para devolver la memoria de <strong>xxx1</strong> al sistema y retornamos el dato extraído.',
+                        activeLines: [4, 5],
+                        state: 'qi_3'
+                    }
+                ]
+            },
+            qui_final: {
+                title: 'E) Quitar al Final (con ant y aux)',
+                opNote: '✂️ Cortar el último eslabón: Necesitamos llegar al último nodo (aux) pero también quedarnos con el anteúltimo (ant) para poder poner ant->sgte = NULL.',
+                code: [
+                    'int quitarFinal(Nodo *&lista){',
+                    '    Nodo *aux = lista;',
+                    '    Nodo *ant = NULL;',
+                    '    while(aux->sgte != NULL){',
+                    '        ant = aux;',
+                    '        aux = aux->sgte;',
+                    '    }',
+                    '    int dato = aux->info;',
+                    '    ant->sgte = NULL;',
+                    '    delete aux;',
+                    '    return dato;',
+                    '}'
+                ],
+                slides: [
+                    {
+                        badge: 'Paso 1 de 2',
+                        subtitle: 'while(aux->sgte != NULL) { ant = aux; aux = aux->sgte; }',
+                        title: '1) Ubicar aux en el último nodo y ant en el anteúltimo',
+                        text: 'Recorremos la lista hasta que <strong>↑ aux</strong> apunta al último nodo (<strong>xxx3</strong>, que queremos eliminar) y <strong>↑ ant</strong> queda un paso atrás en el anteúltimo (<strong>xxx2</strong>).',
+                        activeLines: [1, 2, 3, 4, 5, 6],
+                        state: 'qf_1'
+                    },
+                    {
+                        badge: 'Paso 2 de 2',
+                        subtitle: 'ant->sgte = NULL; delete aux;',
+                        title: '2) Convertir a ant en el nuevo final (NULL) y borrar aux',
+                        text: 'Rescatamos <code>dato = aux-&gt;info</code>, desconectamos el último haciendo <code>ant-&gt;sgte = NULL;</code> en <strong>xxx2</strong> y liberamos <strong>xxx3</strong> con <code>delete aux;</code>.',
+                        activeLines: [7, 8, 9, 10],
+                        state: 'qf_2'
+                    }
+                ]
+            },
+            qui_medio: {
+                title: 'F) Quitar en Posición o en Medio (ant, act y aux)',
+                opNote: '🔗 Puentear un nodo intermedio: El nodo anterior (ant) se saltea al nodo actual (act) conectándose directamente con el siguiente (aux = act->sgte).',
+                code: [
+                    '// Quitar un nodo intermedio (pos 1 / valor 20)',
+                    'Nodo *ant = xxx1;       // nodo anterior',
+                    'Nodo *act = xxx2;       // nodo a borrar',
+                    'Nodo *aux = act->sgte;  // nodo siguiente (xxx3)',
+                    'int dato = act->info;',
+                    'ant->sgte = aux;        // puenteamos act',
+                    'delete act;'
+                ],
+                slides: [
+                    {
+                        badge: 'Paso 1 de 2 (Apunte 08)',
+                        subtitle: 'Identificar ant (xxx1), act (xxx2) y aux (xxx3)',
+                        title: '1) Ubicar el nodo a borrar (act) entre ant y aux',
+                        text: 'Tal como en el dibujo de <strong>QuitarLista (Apunte 08)</strong>: al buscar por posición o por valor, <strong>↑ ant</strong> apunta al anterior (<code>xxx1</code>), <strong>↑ act</strong> apunta al que queremos borrar (<code>xxx2</code>) y <strong>↑ aux</strong> al siguiente (<code>xxx3</code>).',
+                        activeLines: [1, 2, 3, 4],
+                        state: 'qm_1'
+                    },
+                    {
+                        badge: 'Paso 2 de 2',
+                        subtitle: 'ant->sgte = aux; delete act;',
+                        title: '2) Puentear ant->sgte = aux y liberar act',
+                        text: 'Hacemos que <code>xxx1</code> apunte directo a <code>xxx3</code> mediante <code>ant-&gt;sgte = aux;</code> (o <code>ant-&gt;sgte = act-&gt;sgte;</code>) y eliminamos el nodo del medio con <code>delete act;</code>.',
+                        activeLines: [5, 6],
+                        state: 'qm_2'
+                    }
+                ]
+            },
+            buscar_ptr: {
+                title: 'G) Devolver Puntero a un Nodo (buscar)',
+                opNote: '🔎 Consulta sin modificar la lista: Recibe Nodo *lista por VALOR (sin &) y devuelve Nodo* (la dirección xxx del nodo encontrado, o NULL si no existe).',
+                code: [
+                    'Nodo* buscar(Nodo *lista, int datoBuscado){',
+                    '    Nodo *aux = lista;',
+                    '    while(aux != NULL && aux->info != datoBuscado){',
+                    '        aux = aux->sgte;',
+                    '    }',
+                    '    return aux; // devuelve xxx2 o NULL',
+                    '}'
+                ],
+                slides: [
+                    {
+                        badge: 'Paso 1 de 3',
+                        subtitle: 'Nodo *aux = lista; // buscamos el 20',
+                        title: '1) Empezar en el inicio con un puntero aux',
+                        text: 'Queremos obtener el puntero al nodo que contiene el valor <strong>20</strong>. Empezamos con <code>Nodo *aux = lista;</code> parado en <strong>xxx1</strong> (<code>info = 10</code>). Como <code>10 != 20</code>, el ciclo continúa.',
+                        activeLines: [0, 1, 2],
+                        state: 'bp_1'
+                    },
+                    {
+                        badge: 'Paso 2 de 3',
+                        subtitle: 'aux = aux->sgte; // ahora aux->info == 20',
+                        title: '2) Avanzar con aux = aux->sgte hasta encontrarlo',
+                        text: 'Avanzamos a <strong>xxx2</strong>. Al evaluar la condición del <code>while</code>, vemos que <code>aux-&gt;info == 20</code> (¡encontramos el dato!), por lo que el ciclo corta inmediatamente.',
+                        activeLines: [2, 3, 4],
+                        state: 'bp_2'
+                    },
+                    {
+                        badge: 'Paso 3 de 3',
+                        subtitle: 'return aux; // retorna la dirección xxx2',
+                        title: '3) Retornar el puntero al nodo encontrado',
+                        text: 'La función ejecuta <code>return aux;</code> devolviendo la dirección <strong>xxx2</strong>. Con ese puntero podemos leer o modificar ese nodo directamente (ej: <code>buscado-&gt;info = 99;</code>) sin volver a recorrer. Si no existiera, <code>aux</code> llegaría a <strong>NULL</strong> y retornaría <code>NULL</code>.',
+                        activeLines: [5],
+                        state: 'bp_3'
+                    }
+                ]
+            },
+            tipos_listas: {
+                title: 'H) Los 5 Tipos de Listas y qué operaciones permiten (Apunte 09)',
+                opNote: '📚 Resumen del Apunte 09: Todas las variantes de listas se pueden recorrer, buscar, insertar y eliminar, pero cambian los enlaces de cada nodo según la necesidad del problema.',
+                code: [
+                    '// 1) Simple:     struct Nodo { int info; Nodo *sgte; };',
+                    '// 2) Doble:      struct NodoD { int info; NodoD *ant; NodoD *sgte; };',
+                    '// 3) Circular:   ultimo->sgte = lista; // anillo simple',
+                    '// 4) Circ.Doble: ultimo->sgte = lista; lista->ant = ultimo;',
+                    '// 5) Sublistas:  struct NodoP { int info; NodoP *sgte; NodoSub *listB; };'
+                ],
+                slides: [
+                    {
+                        badge: 'Tipo 1 de 5 (Apunte 09)',
+                        subtitle: 'Listas Simplemente Enlazadas',
+                        title: '1) Lista Simplemente Enlazada (Hacia adelante)',
+                        text: '<p><strong>Estructura:</strong> Cada nodo tiene <code>info</code> y un único puntero <code>*sgte</code> que apunta al nodo sucesor. El último apunta a <strong>NULL</strong>.</p><p><strong>Operaciones:</strong> Es eficiente en recorridos directos (de izquierda a derecha). Permite insertar/quitar al inicio en 1 paso, y al final o en medio recorriendo desde <code>lista</code>.</p>',
+                        activeLines: [0],
+                        state: 'tl_simple'
+                    },
+                    {
+                        badge: 'Tipo 2 de 5 (Apunte 09)',
+                        subtitle: 'Listas Doblemente Enlazadas (*ant y *sgte)',
+                        title: '2) Lista Doblemente Enlazada (Ida y vuelta)',
+                        text: '<p><strong>Estructura:</strong> Cada nodo posee <strong>dos enlaces</strong>: <code>*ant</code> (al nodo predecesor) y <code>*sgte</code> (al nodo sucesor).</p><p><strong>Operaciones:</strong> Permite recorrer tanto hacia adelante (<code>aux = aux-&gt;sgte</code>) como hacia atrás (<code>aux = aux-&gt;ant</code>), y facilita borrar un nodo sin necesitar un puntero perseguidor externo.</p>',
+                        activeLines: [1],
+                        state: 'tl_doble'
+                    },
+                    {
+                        badge: 'Tipo 3 de 5 (Apunte 09)',
+                        subtitle: 'Listas Circulares Simplemente Enlazadas',
+                        title: '3) Lista Circular Simplemente Enlazada (En anillo)',
+                        text: '<p><strong>Estructura:</strong> El último nodo (<strong>xxx3</strong>), en lugar de apuntar a <code>NULL</code>, enlaza su puntero <code>*sgte</code> de vuelta al primer nodo (<strong>xxx1</strong>).</p><p><strong>Operaciones:</strong> Ideal para turnos rotativos (round-robin). Para recorrerla sin caer en un bucle infinito usamos <code>do { ... aux = aux-&gt;sgte; } while(aux != lista);</code>.</p>',
+                        activeLines: [2],
+                        state: 'tl_circular'
+                    },
+                    {
+                        badge: 'Tipo 4 de 5 (Apunte 09)',
+                        subtitle: 'Listas Circulares Doblemente Enlazadas',
+                        title: '4) Lista Circular Doblemente Enlazada (Anillo bidireccional)',
+                        text: '<p><strong>Estructura:</strong> Combina ambas ventajas: el <code>*sgte</code> del último nodo (<strong>xxx3</strong>) apunta al primero (<strong>xxx1</strong>), y el <code>*ant</code> del primero apunta al último.</p><p><strong>Operaciones:</strong> Permite navegar en anillo en ambos sentidos y acceder al último elemento inmediatamente desde el primero (<code>lista-&gt;ant</code>).</p>',
+                        activeLines: [3],
+                        state: 'tl_circular_doble'
+                    },
+                    {
+                        badge: 'Tipo 5 de 5 (Apunte 09 - Pág. 2)',
+                        subtitle: 'Listas Simplemente Enlazadas Dobles (Sublistas)',
+                        title: '5) Lista Principal con Sublistas (*listB)',
+                        text: '<p><strong>Estructura:</strong> Cada nodo de la lista principal tiene <code>*sgte</code> (hacia el siguiente nodo principal) y un segundo puntero <code>*listB</code> que apunta a la cabecera de una <strong>sublista secundaria</strong> (<code>xx10 → xx11 → xx12</code>).</p><p><strong>Operaciones típicas de parcial:</strong> Modelar relaciones 1 a N (ej: Lista de <em>Cursos</em> donde cada curso tiene su propia sublista de <em>Alumnos</em>, o <em>Clientes</em> con su sublista de <em>Ventas</em>).</p>',
+                        activeLines: [4],
+                        state: 'tl_sublista'
+                    }
+                ]
+            }
+        };
+
+        function selectPresentation(key) {
+            currentPresKey = key;
+            currentSlideIdx = 0;
+            renderPresentation();
+        }
+
+        function prevSlide() {
+            if (currentSlideIdx > 0) {
+                currentSlideIdx--;
+                renderPresentation();
+            }
+        }
+
+        function nextSlide() {
+            const pres = PRESENTATIONS[currentPresKey];
+            if (pres && currentSlideIdx < pres.slides.length - 1) {
+                currentSlideIdx++;
+                renderPresentation();
+            }
+        }
+
+        function goToSlide(idx) {
+            currentSlideIdx = idx;
+            renderPresentation();
+        }
+
+        function drawHorizChain(nodesConfig, showNull = true) {
+            const nodesHtml = nodesConfig.map(n => {
+                const ptrs = (n.ptrs || []).map(p => renderBottomUpArrow(p.label, p.color || '#0ea5e9')).join('');
+                // Si el nodo está suelto (ej. recién creado con new Nodo()), agregamos margen y etiqueta clara
+                const disconnectedClass = n.disconnectedLeft ? 'mr-6 pr-4 border-r-2 border-dashed border-neutral-400' : (n.disconnectedRight ? 'ml-6 pl-4 border-l-2 border-dashed border-neutral-400' : '');
+
+                return `
+                    <div class="flex items-start ${disconnectedClass}">
+                        <div class="flex flex-col items-center">
+                            <div class="flex flex-col ${n.redBox ? 'border-[3px] border-red-600 bg-red-50/30 p-1.5 -m-1.5' : (n.violetBox ? 'border-[3px] border-violet-700 bg-violet-50/40 p-1.5 -m-1.5' : '')}">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs sm:text-sm font-extrabold text-black leading-none">${n.addr}</span>
+                                    ${n.tag ? `<span class="text-[10px] font-bold px-1 bg-amber-200 border border-black text-black leading-tight">${n.tag}</span>` : ''}
+                                </div>
+                                <div class="nodo-box-pres">
+                                    <div class="nodo-info">
+                                        <span class="text-[10px] text-neutral-400 font-bold leading-none mb-0.5">info</span>
+                                        <span class="text-xl font-extrabold text-black leading-tight">${n.info}</span>
+                                    </div>
+                                    <div class="nodo-sgte">${n.sgteText || '*sgte'}</div>
+                                </div>
+                            </div>
+                            <div class="min-h-[60px] flex items-start justify-center gap-2 pt-1">
+                                ${ptrs}
+                            </div>
+                        </div>
+                        ${n.showArrow !== false ? `
+                            <div class="flex items-center h-[68px] mt-[20px]">
+                                <svg width="40" height="24" viewBox="0 0 40 24" class="overflow-visible -ml-1">
+                                    <line x1="0" y1="12" x2="34" y2="12" stroke="#15803d" stroke-width="3" />
+                                    <polyline points="25,5 36,12 25,19" fill="none" stroke="#15803d" stroke-width="3" stroke-linejoin="round" />
+                                </svg>
+                            </div>
+                        ` : ''}
+                        ${n.ownNull ? `
+                            <div class="flex items-center h-[68px] mt-[20px] pl-1">
+                                <span class="text-xl font-extrabold text-black">NULL</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="flex items-start py-2">
+                    ${nodesHtml}
+                    ${showNull ? `
+                        <div class="flex items-center h-[68px] mt-[20px] pl-1">
+                            <span class="text-2xl font-extrabold text-black">NULL</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function buildPresentationDiagram(state) {
+            switch (state) {
+                // A) Insertar al Inicio
+                case 'ii_0':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [] }
+                    ]);
+                case 'ii_1':
+                    return drawHorizChain([
+                        { addr: 'xxx0', info: 5, tag: 'suelto', sgteText: '?', showArrow: false, disconnectedLeft: true, ptrs: [{ label: 'nuevo', color: '#0ea5e9' }] },
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [] }
+                    ]);
+                case 'ii_2':
+                    return drawHorizChain([
+                        { addr: 'xxx0', info: 5, tag: 'conectado', ptrs: [{ label: 'nuevo', color: '#0ea5e9' }] },
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [] }
+                    ]);
+                case 'ii_3':
+                    return drawHorizChain([
+                        { addr: 'xxx0', info: 5, ptrs: [{ label: 'lista', color: '#3730a3' }, { label: 'nuevo', color: '#0ea5e9' }] },
+                        { addr: 'xxx1', info: 10, ptrs: [] },
+                        { addr: 'xxx2', info: 20, ptrs: [] }
+                    ]);
+
+                // B) Insertar al Final
+                case 'if_1':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, ownNull: true, ptrs: [] },
+                        { addr: 'xxx3', info: 30, tag: 'suelto', disconnectedRight: true, ptrs: [{ label: 'nuevo', color: '#0ea5e9' }] }
+                    ]);
+                case 'if_2':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, ownNull: true, ptrs: [{ label: 'aux', color: '#0ea5e9' }] },
+                        { addr: 'xxx3', info: 30, tag: 'suelto', disconnectedRight: true, ptrs: [{ label: 'nuevo', color: '#0ea5e9' }] }
+                    ]);
+                case 'if_3':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [{ label: 'aux', color: '#0ea5e9' }] },
+                        { addr: 'xxx3', info: 30, tag: 'conectado', ptrs: [{ label: 'nuevo', color: '#0ea5e9' }] }
+                    ]);
+
+                // C) Insertar Ordenado / En Posición
+                case 'im_1':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }, { label: 'ant', color: '#0ea5e9' }] },
+                        { addr: 'xxx3', info: 30, ptrs: [{ label: 'act', color: '#0284c7' }] }
+                    ]);
+                case 'im_2':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }, { label: 'ant', color: '#0ea5e9' }] },
+                        { addr: 'xxx3', info: 30, ownNull: true, ptrs: [{ label: 'act', color: '#0284c7' }] },
+                        { addr: 'xxx2', info: 20, tag: 'nuevo', showArrow: false, disconnectedRight: true, ptrs: [{ label: 'nuevo', color: '#0ea5e9' }] }
+                    ], false);
+                case 'im_3':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }, { label: 'ant', color: '#0ea5e9' }] },
+                        { addr: 'xxx2', info: 20, tag: 'insertado', ptrs: [{ label: 'nuevo', color: '#0ea5e9' }] },
+                        { addr: 'xxx3', info: 30, ptrs: [{ label: 'act', color: '#0284c7' }] }
+                    ]);
+
+                // D) Quitar Primero
+                case 'qi_1':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, redBox: true, ptrs: [{ label: 'lista', color: '#3730a3' }, { label: 'aux', color: '#0ea5e9' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [] },
+                        { addr: 'xxx3', info: 30, ptrs: [] }
+                    ]);
+                case 'qi_2':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, redBox: true, ptrs: [{ label: 'aux', color: '#0ea5e9' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx3', info: 30, ptrs: [] }
+                    ]);
+                case 'qi_3':
+                    return drawHorizChain([
+                        { addr: 'xxx2', info: 20, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx3', info: 30, ptrs: [] }
+                    ]);
+
+                // E) Quitar al Final
+                case 'qf_1':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [{ label: 'ant', color: '#0ea5e9' }] },
+                        { addr: 'xxx3', info: 30, redBox: true, ptrs: [{ label: 'aux', color: '#0ea5e9' }] }
+                    ]);
+                case 'qf_2':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [{ label: 'ant', color: '#0ea5e9' }] }
+                    ]);
+
+                // F) Quitar en Medio / Posición
+                case 'qm_1':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }, { label: 'ant', color: '#0ea5e9' }] },
+                        { addr: 'xxx2', info: 20, redBox: true, ptrs: [{ label: 'act', color: '#dc2626' }] },
+                        { addr: 'xxx3', info: 30, ptrs: [{ label: 'aux', color: '#0ea5e9' }] }
+                    ]);
+                case 'qm_2':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }, { label: 'ant', color: '#0ea5e9' }] },
+                        { addr: 'xxx3', info: 30, ptrs: [{ label: 'aux', color: '#0ea5e9' }] }
+                    ]);
+
+                // G) Devolver Puntero a un Nodo (buscar)
+                case 'bp_1':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, tag: '10 != 20', ptrs: [{ label: 'lista', color: '#3730a3' }, { label: 'aux', color: '#0ea5e9' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [] },
+                        { addr: 'xxx3', info: 30, ptrs: [] }
+                    ]);
+                case 'bp_2':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, violetBox: true, tag: '¡20 == 20!', ptrs: [{ label: 'aux', color: '#6d28d9' }] },
+                        { addr: 'xxx3', info: 30, ptrs: [] }
+                    ]);
+                case 'bp_3':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista', color: '#3730a3' }] },
+                        { addr: 'xxx2', info: 20, violetBox: true, tag: 'return xxx2', ptrs: [{ label: 'buscado = xxx2', color: '#6d28d9' }] },
+                        { addr: 'xxx3', info: 30, ptrs: [] }
+                    ]);
+
+                // H) Los 5 Tipos de Listas (Apunte 09)
+                case 'tl_simple':
+                    return drawHorizChain([
+                        { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista = xxx1', color: '#15803d' }] },
+                        { addr: 'xxx2', info: 20, ptrs: [] },
+                        { addr: 'xxx3', info: 30, ptrs: [] }
+                    ]);
+
+                case 'tl_doble':
+                    return `
+                        <div class="flex items-start py-2">
+                            <div class="flex items-center h-[78px] mt-[20px] pr-1">
+                                <span class="text-lg font-extrabold text-neutral-500">NULL ◄──</span>
+                            </div>
+                            ${['xxx1', 'xxx2', 'xxx3'].map((addr, i) => `
+                                <div class="flex items-start">
+                                    <div class="flex flex-col items-center">
+                                        <span class="text-xs sm:text-sm font-extrabold text-black leading-none mb-1 self-start">${addr}</span>
+                                        <div class="nodo-box-doble">
+                                            <div class="border-r-[3px] border-black flex items-center justify-center font-extrabold text-base bg-sky-50">*ant</div>
+                                            <div class="flex flex-col">
+                                                <div class="flex-1 border-b-[3px] border-black flex items-center justify-center font-extrabold text-sm bg-emerald-50">*sgte</div>
+                                                <div class="flex-1 flex items-center justify-center font-extrabold text-base">${(i + 1) * 10}</div>
+                                            </div>
+                                        </div>
+                                        <div class="min-h-[55px] flex items-start justify-center pt-1">
+                                            ${i === 0 ? renderBottomUpArrow('lista = xxx1', '#15803d') : ''}
+                                        </div>
+                                    </div>
+                                    ${i < 2 ? `
+                                        <div class="flex items-center h-[78px] mt-[20px] px-1">
+                                            <svg width="42" height="36" viewBox="0 0 42 36" class="overflow-visible">
+                                                <!-- Flecha ida (*sgte) -->
+                                                <line x1="2" y1="11" x2="38" y2="11" stroke="#15803d" stroke-width="2.8" />
+                                                <polyline points="30,5 40,11 30,17" fill="none" stroke="#15803d" stroke-width="2.8" />
+                                                <!-- Flecha vuelta (*ant) -->
+                                                <line x1="40" y1="25" x2="4" y2="25" stroke="#0284c7" stroke-width="2.8" />
+                                                <polyline points="12,19 2,25 12,31" fill="none" stroke="#0284c7" stroke-width="2.8" />
+                                            </svg>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                            <div class="flex items-center h-[78px] mt-[20px] pl-2">
+                                <span class="text-lg font-extrabold text-black">──► NULL</span>
+                            </div>
+                        </div>
+                    `;
+
+                case 'tl_circular':
+                    return `
+                        <div class="flex flex-col items-center py-2">
+                            <!-- Retorno en anillo por arriba bien despejado -->
+                            <div class="w-full px-6 mb-1">
+                                <div class="border-t-[3px] border-l-[3px] border-r-[3px] border-indigo-700 h-7 relative bg-indigo-50/30">
+                                    <span class="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-extrabold text-indigo-900 bg-amber-100 px-2 border border-indigo-700 whitespace-nowrap">
+                                        ◄──── *sgte de xxx3 vuelve al primer nodo (xxx1) ────
+                                    </span>
+                                    <!-- Flecha que baja hacia xxx1 -->
+                                    <svg width="20" height="16" viewBox="0 0 20 16" class="absolute -bottom-2 -left-[11px]">
+                                        <polyline points="3,4 10,14 17,4" fill="none" stroke="#3730a3" stroke-width="3" />
+                                    </svg>
+                                </div>
+                            </div>
+                            ${drawHorizChain([
+                                { addr: 'xxx1', info: 10, ptrs: [{ label: 'lista = xxx1', color: '#15803d' }] },
+                                { addr: 'xxx2', info: 20, ptrs: [] },
+                                { addr: 'xxx3', info: 30, tag: 'vuelve a xxx1', showArrow: false, ptrs: [] }
+                            ], false)}
+                        </div>
+                    `;
+
+                case 'tl_circular_doble':
+                    return `
+                        <div class="flex flex-col items-center py-2">
+                            <div class="w-full px-4 mb-1">
+                                <div class="border-t-[3px] border-l-[3px] border-r-[3px] border-emerald-700 h-6 relative">
+                                    <span class="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] font-extrabold text-emerald-900 bg-emerald-50 px-2 border border-emerald-700 whitespace-nowrap">
+                                        ◄─── xxx3-&gt;sgte conecta a xxx1 &nbsp;|&nbsp; xxx1-&gt;ant conecta a xxx3 ───►
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                ${['xxx1', 'xxx2', 'xxx3'].map((addr, i) => `
+                                    <div class="flex items-start">
+                                        <div class="flex flex-col items-center">
+                                            <span class="text-xs font-extrabold text-black mb-1 self-start">${addr}</span>
+                                            <div class="nodo-box-doble">
+                                                <div class="border-r-[3px] border-black flex items-center justify-center font-extrabold text-base bg-sky-50">*ant</div>
+                                                <div class="flex flex-col">
+                                                    <div class="flex-1 border-b-[3px] border-black flex items-center justify-center font-extrabold text-sm bg-emerald-50">*sgte</div>
+                                                    <div class="flex-1 flex items-center justify-center font-extrabold text-base">${(i + 1) * 10}</div>
+                                                </div>
+                                            </div>
+                                            <div class="min-h-[50px] flex items-start justify-center pt-1">
+                                                ${i === 0 ? renderBottomUpArrow('lista = xxx1', '#15803d') : ''}
+                                            </div>
+                                        </div>
+                                        ${i < 2 ? `
+                                            <div class="flex items-center h-[78px] mt-[18px] px-1">
+                                                <svg width="38" height="32" viewBox="0 0 38 32">
+                                                    <line x1="2" y1="10" x2="34" y2="10" stroke="#15803d" stroke-width="2.6" />
+                                                    <polyline points="26,5 36,10 26,15" fill="none" stroke="#15803d" stroke-width="2.6" />
+                                                    <line x1="36" y1="22" x2="4" y2="22" stroke="#0284c7" stroke-width="2.6" />
+                                                    <polyline points="12,17 2,22 12,27" fill="none" stroke="#0284c7" stroke-width="2.6" />
+                                                </svg>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+
+                case 'tl_sublista':
+                    return `
+                        <div class="flex flex-col items-start gap-2 py-1">
+                            <!-- Lista Principal arriba -->
+                            <div class="text-[11px] font-extrabold uppercase text-emerald-900 bg-emerald-100 px-2 py-0.5 border border-black">
+                                Lista Principal (ej: Cursos / Clientes)
+                            </div>
+                            <div class="flex items-start">
+                                ${['xxx1', 'xxx2', 'xxx3'].map((addr, i) => `
+                                    <div class="flex items-start">
+                                        <div class="flex flex-col items-center">
+                                            <span class="text-xs font-extrabold text-black leading-none mb-1 self-start">${addr}</span>
+                                            <div class="nodo-box-doble">
+                                                <div class="border-r-[3px] border-black flex flex-col items-center justify-center font-extrabold">
+                                                    <span class="text-[10px] text-neutral-400">info</span>
+                                                    <span class="text-base">Curso ${i + 1}</span>
+                                                </div>
+                                                <div class="flex flex-col">
+                                                    <div class="flex-1 border-b-[3px] border-black flex items-center justify-center font-extrabold text-sm">*sgte</div>
+                                                    <div class="flex-1 flex items-center justify-center font-extrabold text-sm text-indigo-900 bg-indigo-100">*listB</div>
+                                                </div>
+                                            </div>
+                                            ${i === 0 ? `
+                                                <div class="flex items-start gap-6">
+                                                    ${renderBottomUpArrow('lista = xxx1', '#15803d')}
+                                                    <div class="flex flex-col items-center">
+                                                        <svg width="24" height="40" viewBox="0 0 24 40" class="overflow-visible">
+                                                            <line x1="12" y1="0" x2="12" y2="36" stroke="#3730a3" stroke-width="3.2" />
+                                                            <polyline points="5,26 12,37 19,26" fill="none" stroke="#3730a3" stroke-width="3.2" />
+                                                        </svg>
+                                                        <span class="text-[10px] font-extrabold text-indigo-900 bg-indigo-50 px-1 border border-indigo-600">sublista de xxx1</span>
+                                                    </div>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        ${i < 2 ? `
+                                            <div class="flex items-center h-[78px] mt-[16px]">
+                                                <svg width="36" height="24" viewBox="0 0 36 24"><line x1="0" y1="12" x2="30" y2="12" stroke="#15803d" stroke-width="3"/><polyline points="22,5 32,12 22,19" fill="none" stroke="#15803d" stroke-width="3"/></svg>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                                <div class="flex items-center h-[78px] mt-[16px] pl-1">
+                                    <span class="text-xl font-extrabold text-black">NULL</span>
+                                </div>
+                            </div>
+
+                            <!-- Sublista abajo (xx10 -> xx11 -> xx12 -> NULL) -->
+                            <div class="pl-6 pt-1 border-l-4 border-indigo-700 bg-indigo-50/40 p-2.5">
+                                <div class="text-[11px] font-extrabold text-indigo-950 mb-1">
+                                    Sublista colgada de <code class="font-bold">xxx1-&gt;listB</code> (ej: Alumnos inscriptos en Curso 1):
+                                </div>
+                                ${drawHorizChain([
+                                    { addr: 'xx10', info: 101, ptrs: [] },
+                                    { addr: 'xx11', info: 102, ptrs: [] },
+                                    { addr: 'xx12', info: 103, ptrs: [] }
+                                ], true)}
+                            </div>
+                        </div>
+                    `;
+                default:
+                    return '';
+            }
+        }
+
+        function renderPresentation() {
+            const pres = PRESENTATIONS[currentPresKey];
+            if (!pres) return;
+
+            ['ins_inicio', 'ins_final', 'ins_medio', 'qui_inicio', 'qui_final', 'qui_medio', 'buscar_ptr', 'tipos_listas'].forEach(k => {
+                const btn = document.getElementById(`presBtn_${k}`);
+                if (!btn) return;
+                if (k === currentPresKey) {
+                    btn.className = 'px-3 py-1.5 text-xs font-extrabold border-2 border-black bg-emerald-700 text-white neo-shadow-sm cursor-pointer transition';
+                } else {
+                    btn.className = 'px-3 py-1.5 text-xs font-extrabold border-2 border-black bg-white hover:bg-neutral-100 text-black cursor-pointer transition';
+                }
+            });
+
+            const slide = pres.slides[currentSlideIdx];
+            document.getElementById('presSlideBadge').textContent = slide.badge;
+            document.getElementById('presSlideSubtitle').textContent = slide.subtitle;
+            document.getElementById('presStepTitle').textContent = slide.title;
+            document.getElementById('presStepText').innerHTML = slide.text;
+            document.getElementById('presOperationBadge').innerHTML = pres.opNote || '';
+
+            document.getElementById('presDiagramCanvas').innerHTML = buildPresentationDiagram(slide.state);
+
+            const codeEl = document.getElementById('presCodeHighlight');
+            codeEl.innerHTML = pres.code.map((line, idx) => {
+                const isActive = slide.activeLines.includes(idx);
+                return `<div class="px-2 py-0.5 whitespace-pre ${isActive ? 'bg-amber-400 text-black font-extrabold border-l-4 border-emerald-700' : 'text-neutral-300'}">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+            }).join('');
+
+            const dotsEl = document.getElementById('presStepDots');
+            dotsEl.innerHTML = pres.slides.map((_, idx) => `
+                <button onclick="goToSlide(${idx})" class="w-7 h-7 text-xs font-extrabold border-2 border-black cursor-pointer ${
+                    idx === currentSlideIdx ? 'bg-black text-white' : 'bg-white text-black hover:bg-neutral-200'
+                }">${idx + 1}</button>
+            `).join('');
+
+            document.getElementById('presPrevBtn').disabled = currentSlideIdx === 0;
+            document.getElementById('presNextBtn').disabled = currentSlideIdx === pres.slides.length - 1;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isPizarraMaximized) {
+                toggleMaximizePizarra();
+                return;
+            }
+            if (currentView !== 'explicar') return;
+            if (e.key === 'ArrowRight') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        });
+
+        function renderAll() {
+            renderRetornoBar();
+            renderLists();
+            renderCode();
+        }
+
+        function renderCode() {
+            const box = document.getElementById('codeBox');
+            const decls = lists.map(l => `    Nodo *${l.ptrName} = NULL;`).join('\n');
+            const retLine = usedRetornoVar ? `\n    int retorno;` : '';
+            const buscadoLine = usedBuscadoVar ? `\n    Nodo *buscado = NULL;` : '';
+            const steps = codeLines.map(line => `    ${line}`).join('\n');
+
+            box.textContent = `int main(){\n${decls}${retLine}${buscadoLine}\n\n${steps}\n\n    return 0;\n}`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function setExplanation(html) {
+            const el = document.getElementById('stepExplanation');
+            if (el) el.innerHTML = html;
+        }
+
+        function clearCodeHistory() {
+            codeLines = [];
+            renderCode();
+        }
+
+        function toggleApunteModal() {
+            const modal = document.getElementById('apunteModal');
+            modal.classList.toggle('hidden');
+        }
+
+        function copyCode() {
+            const decls = lists.map(l => `    Nodo *${l.ptrName} = NULL;`).join('\n');
+            const retLine = usedRetornoVar ? `\n    int retorno;` : '';
+            const buscadoLine = usedBuscadoVar ? `\n    Nodo *buscado = NULL;` : '';
+            const steps = codeLines.map(line => `    ${line}`).join('\n');
+
+            const fullCpp = `#include <iostream> //entrada y salida de datos
+#include <cstring> // manejo de cadenas de texto
+#include <cstdio> // manejo de archivos
+using namespace std;
+
+struct Nodo{
+    int info;
+    Nodo *sgte;
+};
+
+void insertarInicio(Nodo *&, int);
+void insertarFinal(Nodo *&, int);
+void insertarOrdenado(Nodo *&, int);
+void insertarEnPosicion(Nodo *&, int, int);
+int quitarInicio(Nodo *&);
+int quitarFinal(Nodo *&);
+int quitarPosicion(Nodo *&, int);
+Nodo* buscar(Nodo *, int);
+
+int main(){
+${decls}${retLine}${buscadoLine}
+
+${steps}
+
+    return 0;
+}
+
+void insertarInicio(Nodo *&lista, int dato){
+    Nodo *nuevo = new Nodo();
+    nuevo->info = dato;
+    nuevo->sgte = lista;
+    lista = nuevo;
+}
+
+void insertarFinal(Nodo *&lista, int dato){
+    Nodo *nuevo = new Nodo();
+    nuevo->info = dato;
+    nuevo->sgte = NULL;
+    if(lista == NULL){
+        lista = nuevo;
+    }else{
+        Nodo *aux = lista;
+        while(aux->sgte != NULL){
+            aux = aux->sgte;
+        }
+        aux->sgte = nuevo;
+    }
+}
+
+void insertarOrdenado(Nodo *&lista, int dato){
+    Nodo *nuevo = new Nodo();
+    nuevo->info = dato;
+    if(lista == NULL || lista->info >= dato){
+        nuevo->sgte = lista;
+        lista = nuevo;
+    }else{
+        Nodo *aux = lista;
+        while(aux->sgte != NULL && aux->sgte->info < dato){
+            aux = aux->sgte;
+        }
+        nuevo->sgte = aux->sgte;
+        aux->sgte = nuevo;
+    }
+}
+
+void insertarEnPosicion(Nodo *&lista, int dato, int pos){
+    if(pos <= 0 || lista == NULL){
+        insertarInicio(lista, dato);
+        return;
+    }
+    Nodo *nuevo = new Nodo();
+    nuevo->info = dato;
+    Nodo *ant = lista;
+    int posActual = 0;
+    while(posActual < pos - 1 && ant->sgte != NULL){
+        ant = ant->sgte;
+        posActual++;
+    }
+    nuevo->sgte = ant->sgte;
+    ant->sgte = nuevo;
+}
+
+int quitarInicio(Nodo *&lista){
+    int dato = lista->info;
+    Nodo *aux = lista;
+    lista = aux->sgte;
+    delete aux;
+    return dato;
+}
+
+int quitarFinal(Nodo *&lista){
+    if(lista->sgte == NULL){
+        int dato = lista->info;
+        delete lista;
+        lista = NULL;
+        return dato;
+    }
+    Nodo *aux = lista;
+    Nodo *ant = NULL;
+    while(aux->sgte != NULL){
+        ant = aux;
+        aux = aux->sgte;
+    }
+    int dato = aux->info;
+    ant->sgte = NULL;
+    delete aux;
+    return dato;
+}
+
+int quitarPosicion(Nodo *&lista, int pos){
+    int posActual = 0;
+    Nodo *aux = lista;
+    Nodo *ant = NULL;
+    while(posActual < pos && aux != NULL){
+        ant = aux;
+        aux = aux->sgte;
+        posActual++;
+    }
+    if(aux == NULL) return -1;
+    int dato = aux->info;
+    if(ant == NULL){
+        lista = lista->sgte;
+    }else{
+        ant->sgte = aux->sgte;
+    }
+    delete aux;
+    return dato;
+}
+
+Nodo* buscar(Nodo *lista, int dato){
+    Nodo *aux = lista;
+    while(aux != NULL && aux->info != dato){
+        aux = aux->sgte;
+    }
+    return aux;
+}`;
+
+            const temp = document.createElement('textarea');
+            temp.value = fullCpp;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+
+            const btn = document.getElementById('copyBtn');
+            btn.textContent = '¡Copiado!';
+            setTimeout(() => { btn.textContent = 'Copiar C++'; }, 1500);
+        }
+
+        window.addEventListener('DOMContentLoaded', resetAll);
+    </script>
+</body>
+</html>
